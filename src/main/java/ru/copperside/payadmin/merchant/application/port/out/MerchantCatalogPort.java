@@ -9,5 +9,7 @@ public interface MerchantCatalogPort {
     List<MerchantConfigurationEntry> fetchActiveConfiguration(Long merchantId);
 
     long countActiveLines(String search);
+
+    MerchantAdminPage fetchAdminPage(int limit, int offset, String search, String status, String sortBy, String sortDir);
 }
 

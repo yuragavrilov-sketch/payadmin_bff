@@ -165,6 +165,12 @@ class MerchantControllerTest {
         public long countActiveLines(String search) {
             return merchants.size();
         }
+
+        @Override
+        public ru.copperside.payadmin.merchant.application.port.out.MerchantAdminPage fetchAdminPage(
+                int limit, int offset, String search, String status, String sortBy, String sortDir) {
+            return new ru.copperside.payadmin.merchant.application.port.out.MerchantAdminPage(java.util.List.of(), 0L);
+        }
     }
 }
 

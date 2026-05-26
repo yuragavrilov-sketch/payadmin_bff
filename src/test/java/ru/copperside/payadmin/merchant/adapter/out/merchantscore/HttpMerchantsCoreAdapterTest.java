@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import ru.copperside.payadmin.common.web.RequestIdFilter;
+import ru.copperside.payadmin.merchant.application.port.out.MerchantAdminPage;
 import ru.copperside.payadmin.merchant.application.port.out.MerchantConfigurationEntry;
 import ru.copperside.payadmin.merchant.application.port.out.MerchantConfigurationLine;
 import ru.copperside.payadmin.common.application.UpstreamUnavailableException;
@@ -148,6 +149,59 @@ class HttpMerchantsCoreAdapterTest {
         server.enqueue(new MockResponse().setResponseCode(500).setBody("{}"));
 
         assertThatThrownBy(() -> client().countActiveLines(null))
+                .isInstanceOf(UpstreamUnavailableException.class)
+                .hasMessageContaining("merchants-core");
+    }
+
+    @Test
+    void fetchAdminPageParsesProjectionAndTotal() throws Exception {
+        server.enqueue(json("""
+                {
+                  "data": [
+                    { "mercId": 4, "name": "Delta", "status": "active", "mcc": "5411", "createdAt": "2018-01-01T00:00:00Z" },
+                    { "mercId": 6, "name": "Foxtrot", "status": "blocked", "mcc": "0000", "createdAt": null }
+                  ],
+                  "meta": { "limit": 50, "offset": 0, "count": 2, "total": 42, "sortBy": "mercId", "sortDir": "asc" },
+                  "error": null,
+                  "timestamp": "2026-05-25T20:00:00Z"
+                }
+                """));
+        MDC.put(RequestIdFilter.MDC_KEY, "00000000-0000-0000-0000-000000000099");
+
+        MerchantAdminPage page = client().fetchAdminPage(50, 0, "delta", "active", "name", "desc");
+
+        assertThat(page.total()).isEqualTo(42L);
+        assertThat(page.lines()).hasSize(2);
+        assertThat(page.lines().get(0).mercId()).isEqualTo(4L);
+        assertThat(page.lines().get(0).status()).isEqualTo("active");
+        assertThat(page.lines().get(0).createdAt()).isEqualTo(Instant.parse("2018-01-01T00:00:00Z"));
+        assertThat(page.lines().get(1).createdAt()).isNull();
+
+        RecordedRequest request = server.takeRequest();
+        assertThat(request.getPath()).isEqualTo(
+                "/api/v1/merchants/admin-list?limit=50&offset=0&search=delta&status=active&sortBy=name&sortDir=desc");
+        assertThat(request.getHeader("X-Core-Key")).isEqualTo("secret");
+        assertThat(request.getHeader("X-Request-Id")).isEqualTo("00000000-0000-0000-0000-000000000099");
+    }
+
+    @Test
+    void fetchAdminPageOmitsSearchAndStatusWhenNull() throws Exception {
+        server.enqueue(json("""
+                { "data": [], "meta": { "total": 0 }, "error": null, "timestamp": "2026-05-25T20:00:00Z" }
+                """));
+
+        client().fetchAdminPage(100, 0, null, null, "mercId", "asc");
+
+        RecordedRequest request = server.takeRequest();
+        assertThat(request.getPath()).isEqualTo(
+                "/api/v1/merchants/admin-list?limit=100&offset=0&sortBy=mercId&sortDir=asc");
+    }
+
+    @Test
+    void fetchAdminPageMapsUpstreamErrorToUnavailable() {
+        server.enqueue(new MockResponse().setResponseCode(500).setBody("{}"));
+
+        assertThatThrownBy(() -> client().fetchAdminPage(100, 0, null, null, "mercId", "asc"))
                 .isInstanceOf(UpstreamUnavailableException.class)
                 .hasMessageContaining("merchants-core");
     }

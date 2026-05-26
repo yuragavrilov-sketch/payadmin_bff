@@ -1,6 +1,8 @@
 package ru.copperside.payadmin.merchant.adapter.out.merchantscore;
 
 import ru.copperside.payadmin.common.web.RequestIdFilter;
+import ru.copperside.payadmin.merchant.application.port.out.MerchantAdminLine;
+import ru.copperside.payadmin.merchant.application.port.out.MerchantAdminPage;
 import ru.copperside.payadmin.merchant.application.port.out.MerchantConfigurationEntry;
 import ru.copperside.payadmin.merchant.application.port.out.MerchantConfigurationLine;
 import ru.copperside.payadmin.merchant.application.port.out.MerchantCatalogPort;
@@ -29,6 +31,9 @@ public class HttpMerchantsCoreAdapter implements MerchantCatalogPort {
             new ParameterizedTypeReference<>() {
             };
     private static final ParameterizedTypeReference<MerchantsCoreApiResponse<MerchantsCoreCount>> COUNT_TYPE =
+            new ParameterizedTypeReference<>() {
+            };
+    private static final ParameterizedTypeReference<MerchantsCoreApiResponse<List<MerchantsCoreAdminLine>>> ADMIN_PAGE_TYPE =
             new ParameterizedTypeReference<>() {
             };
 
@@ -128,6 +133,47 @@ public class HttpMerchantsCoreAdapter implements MerchantCatalogPort {
             return response.data().total();
         } catch (RestClientResponseException | ResourceAccessException ex) {
             throw new UpstreamUnavailableException("merchants-core active-line count request failed", ex);
+        }
+    }
+
+    @Override
+    public MerchantAdminPage fetchAdminPage(int limit, int offset, String search, String status, String sortBy, String sortDir) {
+        try {
+            MerchantsCoreApiResponse<List<MerchantsCoreAdminLine>> response = restClient.get()
+                    .uri(builder -> {
+                        var uri = builder.path("/api/v1/merchants/admin-list")
+                                .queryParam("limit", limit)
+                                .queryParam("offset", offset);
+                        if (search != null && !search.isBlank()) {
+                            uri.queryParam("search", search);
+                        }
+                        if (status != null && !status.isBlank()) {
+                            uri.queryParam("status", status);
+                        }
+                        return uri.queryParam("sortBy", sortBy)
+                                .queryParam("sortDir", sortDir)
+                                .build();
+                    })
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(ADMIN_PAGE_TYPE);
+
+            if (response == null || response.data() == null) {
+                return new MerchantAdminPage(List.of(), 0L);
+            }
+
+            List<MerchantAdminLine> lines = response.data().stream()
+                    .map(dto -> new MerchantAdminLine(
+                            dto.mercId(), dto.name(), dto.status(), dto.mcc(), dto.createdAt()))
+                    .toList();
+            // admin-list always returns meta.total (COUNT(*) OVER()); lines.size() is a defensive
+            // fallback only for a contract-violating response, kept >= the rows actually returned.
+            long total = response.meta() == null || response.meta().total() == null
+                    ? lines.size()
+                    : response.meta().total();
+            return new MerchantAdminPage(lines, total);
+        } catch (RestClientResponseException | ResourceAccessException ex) {
+            throw new UpstreamUnavailableException("merchants-core admin-list request failed", ex);
         }
     }
 

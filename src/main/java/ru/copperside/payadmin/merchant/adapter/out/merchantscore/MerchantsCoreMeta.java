@@ -7,6 +7,7 @@ public record MerchantsCoreMeta(
         Integer limit,
         Integer offset,
         Integer count,
+        Long total,
         String search,
         String sortBy,
         String sortDir,
