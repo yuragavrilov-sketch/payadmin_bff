@@ -1,25 +1,9 @@
 pay:
-  environment: ${PAY_ENVIRONMENT:test}
+  environment: test
 
 spring:
   cloud:
     config:
-      enabled: false
+      enabled: true
     vault:
-      enabled: false
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://localhost:18080/realms/payadmin-test
-
-payadmin-bff:
-  merchants-core:
-    base-url: http://localhost:18082
-    internal-admin-api-key: test-internal-key
-    connect-timeout: 500ms
-    read-timeout: 1s
-    page-size: 500
-    max-pages: 20
-  merchants:
-    unknown-mcc: "0000"
+      enabled: true
