@@ -24,7 +24,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -52,11 +51,8 @@ class MerchantControllerTest {
     @BeforeEach
     void setUp() {
         merchantCatalogPort.clear()
-                .withMerchant(184L, "ООО «Ромашка»", Map.of("MCC", "5411"))
-                .withConfig(184L,
-                        entry("NAME", "ООО «Ромашка»", "2025-02-04T10:00:00Z"),
-                        entry("MCC", "5411", "2025-02-05T10:00:00Z")
-                );
+                .withMerchant(184L, "ООО «Ромашка»", Map.of("MCC", "5411"),
+                        Instant.parse("2025-02-04T10:00:00Z"));
 
         mockMvc = MockMvcBuilders.webAppContextSetup(context)
                 .apply(springSecurity())
@@ -105,15 +101,6 @@ class MerchantControllerTest {
                 .andExpect(jsonPath("$.error.status").value(400));
     }
 
-    private static MerchantConfigurationEntry entry(String name, String value, String dateBegin) {
-        return new MerchantConfigurationEntry(
-                name,
-                value,
-                Instant.parse(dateBegin),
-                Instant.parse("2099-01-01T00:00:00Z")
-        );
-    }
-
     @TestConfiguration(proxyBeanMethods = false)
     static class TestSupport {
 
@@ -144,21 +131,14 @@ class MerchantControllerTest {
     static class FakeMerchantCatalogPort implements MerchantCatalogPort {
 
         private final List<MerchantConfigurationLine> merchants = new ArrayList<>();
-        private final Map<Long, List<MerchantConfigurationEntry>> configByMerchant = new LinkedHashMap<>();
 
         FakeMerchantCatalogPort clear() {
             merchants.clear();
-            configByMerchant.clear();
             return this;
         }
 
-        FakeMerchantCatalogPort withMerchant(Long mercId, String name, Map<String, String> configuration) {
-            merchants.add(new MerchantConfigurationLine(mercId, name, configuration));
-            return this;
-        }
-
-        FakeMerchantCatalogPort withConfig(Long merchantId, MerchantConfigurationEntry... entries) {
-            configByMerchant.put(merchantId, List.of(entries));
+        FakeMerchantCatalogPort withMerchant(Long mercId, String name, Map<String, String> configuration, Instant activeSince) {
+            merchants.add(new MerchantConfigurationLine(mercId, name, configuration, activeSince));
             return this;
         }
 
@@ -169,7 +149,7 @@ class MerchantControllerTest {
 
         @Override
         public List<MerchantConfigurationEntry> fetchActiveConfiguration(Long merchantId) {
-            return configByMerchant.getOrDefault(merchantId, List.of());
+            return List.of();
         }
     }
 }

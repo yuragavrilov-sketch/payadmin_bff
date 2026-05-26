@@ -47,7 +47,8 @@ class HttpMerchantsCoreAdapterTest {
                       "hierarchyId": 10,
                       "initiator": "Alice",
                       "circuit": "PAY",
-                      "configuration": { "MCC": "5411" }
+                      "configuration": { "MCC": "5411" },
+                      "activeSince": "2020-01-01T00:00:00Z"
                     }
                   ],
                   "meta": { "count": 1 },
@@ -59,7 +60,12 @@ class HttpMerchantsCoreAdapterTest {
 
         List<MerchantConfigurationLine> merchants = client().fetchActiveLines(3, 5, null, "mercId", "asc");
 
-        assertThat(merchants).containsExactly(new MerchantConfigurationLine(184L, "ООО Ромашка", java.util.Map.of("MCC", "5411")));
+        assertThat(merchants).containsExactly(new MerchantConfigurationLine(
+                184L,
+                "ООО Ромашка",
+                java.util.Map.of("MCC", "5411"),
+                Instant.parse("2020-01-01T00:00:00Z")
+        ));
 
         RecordedRequest request = server.takeRequest();
         assertThat(request.getPath()).isEqualTo("/api/v1/merchants/configurations/active-line?limit=3&offset=5&sortBy=mercId&sortDir=asc");

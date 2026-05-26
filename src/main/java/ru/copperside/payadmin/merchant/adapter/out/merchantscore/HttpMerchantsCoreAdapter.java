@@ -68,7 +68,8 @@ public class HttpMerchantsCoreAdapter implements MerchantCatalogPort {
                     .map(dto -> new MerchantConfigurationLine(
                             dto.mercId(),
                             dto.name(),
-                            dto.configuration() == null ? Map.of() : dto.configuration()
+                            dto.configuration() == null ? Map.of() : dto.configuration(),
+                            dto.activeSince()
                     ))
                     .toList();
         } catch (RestClientResponseException | ResourceAccessException ex) {

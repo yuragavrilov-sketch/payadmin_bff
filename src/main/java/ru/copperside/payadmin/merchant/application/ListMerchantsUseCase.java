@@ -8,7 +8,6 @@ import ru.copperside.payadmin.merchant.domain.MerchantSortField;
 import ru.copperside.payadmin.merchant.domain.MerchantStatus;
 import ru.copperside.payadmin.merchant.domain.SortDirection;
 import ru.copperside.payadmin.merchant.application.port.out.MerchantCatalogPort;
-import ru.copperside.payadmin.merchant.application.port.out.MerchantConfigurationEntry;
 import ru.copperside.payadmin.merchant.application.port.out.MerchantConfigurationLine;
 
 import java.time.Instant;
@@ -67,6 +66,13 @@ public class ListMerchantsUseCase {
     }
 
     public MerchantPage list(MerchantQuery query) {
+        if (canPushDown(query)) {
+            List<AdminMerchant> page = fetchRequestedPage(query).stream()
+                    .map(this::toAdminMerchant)
+                    .toList();
+            return new MerchantPage(page, page.size());
+        }
+
         List<AdminMerchant> mapped = fetchAllActiveLines().stream()
                 .map(this::toAdminMerchant)
                 .filter(merchant -> matchesSearch(merchant, query))
@@ -80,6 +86,24 @@ public class ListMerchantsUseCase {
                 .toList();
 
         return new MerchantPage(page, page.size());
+    }
+
+    private boolean canPushDown(MerchantQuery query) {
+        boolean noSearch = query.search() == null || !query.search().isPresent();
+        return noSearch
+                && query.status() == null
+                && query.sort().field() == MerchantSortField.ID;
+    }
+
+    private List<MerchantConfigurationLine> fetchRequestedPage(MerchantQuery query) {
+        String sortDir = query.sort().direction() == SortDirection.DESC ? "desc" : "asc";
+        return merchantCatalogPort.fetchActiveLines(
+                query.page().limit(),
+                query.page().offset(),
+                null,
+                "mercId",
+                sortDir
+        );
     }
 
     private List<MerchantConfigurationLine> fetchAllActiveLines() {
@@ -102,13 +126,13 @@ public class ListMerchantsUseCase {
     }
 
     private AdminMerchant toAdminMerchant(MerchantConfigurationLine merchant) {
-        List<MerchantConfigurationEntry> activeConfiguration = merchantCatalogPort.fetchActiveConfiguration(merchant.mercId());
+        Instant createdAt = merchant.activeSince() == null ? Instant.EPOCH : merchant.activeSince();
         return new AdminMerchant(
                 formatMerchantId(merchant.mercId()),
                 merchant.name(),
                 deriveStatus(merchant.configuration()),
                 resolveMcc(merchant.configuration()),
-                createdAt(activeConfiguration)
+                createdAt
         );
     }
 
@@ -153,13 +177,6 @@ public class ListMerchantsUseCase {
                 .filter(value -> value != null && value.matches("\\d{4}"))
                 .findFirst()
                 .orElse(merchantsProperties.unknownMcc());
-    }
-
-    private Instant createdAt(List<MerchantConfigurationEntry> activeConfiguration) {
-        return activeConfiguration.stream()
-                .map(MerchantConfigurationEntry::dateBegin)
-                .min(Comparator.naturalOrder())
-                .orElse(Instant.EPOCH);
     }
 
     private Optional<String> valueFor(Map<String, String> configuration, String key) {
