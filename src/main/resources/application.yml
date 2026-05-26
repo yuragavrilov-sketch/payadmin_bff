@@ -1,0 +1,52 @@
+server:
+  port: ${SERVER_PORT:8083}
+
+spring:
+  application:
+    name: payadmin-bff
+  profiles:
+    default: local
+  config:
+    import:
+      - optional:configserver:${CONFIG_SERVER_URL:http://j-srv-config:8080}
+      - optional:vault://
+  cloud:
+    config:
+      enabled: ${CONFIG_SERVER_ENABLED:false}
+    vault:
+      enabled: ${VAULT_ENABLED:false}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/payadmin}
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+payadmin-bff:
+  merchants-core:
+    base-url: ${MERCHANTS_CORE_BASE_URL:http://localhost:8082}
+    internal-admin-header-name: ${MERCHANTS_CORE_INTERNAL_ADMIN_HEADER:X-Internal-Admin-Key}
+    internal-admin-api-key: ${MERCHANTS_CORE_INTERNAL_ADMIN_API_KEY:}
+    connect-timeout: ${MERCHANTS_CORE_CONNECT_TIMEOUT:2s}
+    read-timeout: ${MERCHANTS_CORE_READ_TIMEOUT:5s}
+    page-size: ${MERCHANTS_CORE_PAGE_SIZE:500}
+    max-pages: ${MERCHANTS_CORE_MAX_PAGES:20}
+  merchants:
+    unknown-mcc: ${PAYADMIN_UNKNOWN_MCC:0000}
+  security:
+    required-authority: ${PAYADMIN_REQUIRED_AUTHORITY:}
