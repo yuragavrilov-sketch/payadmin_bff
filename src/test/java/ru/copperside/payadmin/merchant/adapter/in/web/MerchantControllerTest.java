@@ -16,9 +16,11 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+import ru.copperside.payadmin.merchant.application.port.out.MerchantAdminLine;
+import ru.copperside.payadmin.merchant.application.port.out.MerchantAdminPage;
+import ru.copperside.payadmin.merchant.application.port.out.MerchantCatalogPort;
 import ru.copperside.payadmin.merchant.application.port.out.MerchantConfigurationEntry;
 import ru.copperside.payadmin.merchant.application.port.out.MerchantConfigurationLine;
-import ru.copperside.payadmin.merchant.application.port.out.MerchantCatalogPort;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -51,7 +53,7 @@ class MerchantControllerTest {
     @BeforeEach
     void setUp() {
         merchantCatalogPort.clear()
-                .withMerchant(184L, "ООО «Ромашка»", Map.of("MCC", "5411"),
+                .withMerchant(184L, "ООО «Ромашка»", "active", "5411",
                         Instant.parse("2025-02-04T10:00:00Z"));
 
         mockMvc = MockMvcBuilders.webAppContextSetup(context)
@@ -139,39 +141,37 @@ class MerchantControllerTest {
 
     static class FakeMerchantCatalogPort implements MerchantCatalogPort {
 
-        private final List<MerchantConfigurationLine> merchants = new ArrayList<>();
+        private final List<MerchantAdminLine> adminLines = new ArrayList<>();
 
         FakeMerchantCatalogPort clear() {
-            merchants.clear();
+            adminLines.clear();
             return this;
         }
 
-        FakeMerchantCatalogPort withMerchant(Long mercId, String name, Map<String, String> configuration, Instant activeSince) {
-            merchants.add(new MerchantConfigurationLine(mercId, name, configuration, activeSince));
+        FakeMerchantCatalogPort withMerchant(Long mercId, String name, String status, String mcc, Instant createdAt) {
+            adminLines.add(new MerchantAdminLine(mercId, name, status, mcc, createdAt));
             return this;
         }
 
         @Override
+        public MerchantAdminPage fetchAdminPage(
+                int limit, int offset, String search, String status, String sortBy, String sortDir) {
+            return new MerchantAdminPage(adminLines, adminLines.size());
+        }
+
+        @Override
         public List<MerchantConfigurationLine> fetchActiveLines(int limit, int offset, String search, String sortBy, String sortDir) {
-            return merchants.stream().skip(offset).limit(limit).toList();
+            return List.of();
+        }
+
+        @Override
+        public long countActiveLines(String search) {
+            return 0L;
         }
 
         @Override
         public List<MerchantConfigurationEntry> fetchActiveConfiguration(Long merchantId) {
             return List.of();
         }
-
-        @Override
-        public long countActiveLines(String search) {
-            return merchants.size();
-        }
-
-        @Override
-        public ru.copperside.payadmin.merchant.application.port.out.MerchantAdminPage fetchAdminPage(
-                int limit, int offset, String search, String status, String sortBy, String sortDir) {
-            return new ru.copperside.payadmin.merchant.application.port.out.MerchantAdminPage(java.util.List.of(), 0L);
-        }
     }
 }
-
-

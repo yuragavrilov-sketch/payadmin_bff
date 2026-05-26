@@ -9,11 +9,7 @@ import ru.copperside.payadmin.merchant.application.port.out.MerchantCatalogPort;
 public class MerchantUseCaseConfig {
 
     @Bean
-    ListMerchantsUseCase listMerchantsUseCase(
-            MerchantCatalogPort merchantCatalogPort,
-            PayadminMerchantsProperties merchantsProperties,
-            MerchantsCoreProperties merchantsCoreProperties
-    ) {
-        return new ListMerchantsUseCase(merchantCatalogPort, merchantsProperties, merchantsCoreProperties);
+    ListMerchantsUseCase listMerchantsUseCase(MerchantCatalogPort merchantCatalogPort) {
+        return new ListMerchantsUseCase(merchantCatalogPort);
     }
 }
