@@ -136,6 +136,39 @@ class ListMerchantsUseCaseTest {
         assertThat(page.count()).isEqualTo(2);
     }
 
+    @Test
+    void fastPathReportsTotalFromCountCall() {
+        FakeMerchantCatalogPort client = new FakeMerchantCatalogPort()
+                .withMerchant(1L, "A", Map.of("MCC", "5411"), DEFAULT_SINCE)
+                .withMerchant(2L, "B", Map.of("MCC", "5412"), DEFAULT_SINCE);
+
+        ListMerchantsUseCase.MerchantPage page = service(client).list(defaultQuery());
+
+        assertThat(page.total()).isEqualTo(2L);
+        assertThat(client.countCalls).isEqualTo(1);
+    }
+
+    @Test
+    void fullPathReportsFilteredTotalWithoutCountCall() {
+        FakeMerchantCatalogPort client = new FakeMerchantCatalogPort()
+                .withMerchant(1L, "Active", Map.of("MCC", "5411"), DEFAULT_SINCE)
+                .withMerchant(2L, "Suspended", Map.of("status", "suspended"), DEFAULT_SINCE)
+                .withMerchant(3L, "AlsoSuspended", Map.of("status", "suspended"), DEFAULT_SINCE);
+
+        MerchantQuery query = new MerchantQuery(
+                PageWindow.of(1, 0),
+                SearchTerm.empty(),
+                MerchantStatus.SUSPENDED,
+                SortOrder.of(MerchantSortField.ID, SortDirection.ASC)
+        );
+
+        ListMerchantsUseCase.MerchantPage page = service(client).list(query);
+
+        assertThat(page.data()).hasSize(1);
+        assertThat(page.total()).isEqualTo(2L);
+        assertThat(client.countCalls).isZero();
+    }
+
     private MerchantQuery defaultQuery() {
         return new MerchantQuery(
                 PageWindow.of(100, 0),

@@ -73,6 +73,7 @@ class MerchantControllerTest {
                 .andExpect(jsonPath("$.meta.limit").value(100))
                 .andExpect(jsonPath("$.meta.offset").value(0))
                 .andExpect(jsonPath("$.meta.count").value(1))
+                .andExpect(jsonPath("$.meta.total").value(1))
                 .andExpect(jsonPath("$.meta.search").value(nullValue()))
                 .andExpect(jsonPath("$.meta.status").value(nullValue()))
                 .andExpect(jsonPath("$.meta.sortBy").value("id"))
@@ -99,6 +100,14 @@ class MerchantControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.error.code").value("BAD_REQUEST"))
                 .andExpect(jsonPath("$.error.status").value(400));
+    }
+
+    @Test
+    void listMerchantsExposesTotalInMeta() throws Exception {
+        mockMvc.perform(get("/api/v1/merchants")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.total").value(1));
     }
 
     @TestConfiguration(proxyBeanMethods = false)

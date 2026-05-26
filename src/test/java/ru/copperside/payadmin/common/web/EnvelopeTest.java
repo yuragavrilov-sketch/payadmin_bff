@@ -15,7 +15,7 @@ class EnvelopeTest {
 
     @Test
     void successEnvelopeContainsDataMetaNullErrorAndTimestamp() {
-        ApiMeta meta = new ApiMeta(100, 0, 1, null, null, "id", "asc");
+        ApiMeta meta = new ApiMeta(100, 0, 1, null, null, null, "id", "asc");
 
         ApiResponse<List<String>> response = ApiResponse.success(List.of("ok"), meta, CLOCK);
 

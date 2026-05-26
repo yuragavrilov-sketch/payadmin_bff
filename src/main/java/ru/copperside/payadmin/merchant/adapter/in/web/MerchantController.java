@@ -68,6 +68,7 @@ public class MerchantController {
                 limit,
                 offset,
                 page.count(),
+                page.total(),
                 searchTerm.isPresent() ? searchTerm.value() : null,
                 merchantStatus == null ? null : merchantStatus.value(),
                 sortField.value(),

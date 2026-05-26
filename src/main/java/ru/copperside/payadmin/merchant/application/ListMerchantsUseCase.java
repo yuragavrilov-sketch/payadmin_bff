@@ -70,7 +70,9 @@ public class ListMerchantsUseCase {
             List<AdminMerchant> page = fetchRequestedPage(query).stream()
                     .map(this::toAdminMerchant)
                     .toList();
-            return new MerchantPage(page, page.size());
+            long total = merchantCatalogPort.countActiveLines(
+                    query.search().isPresent() ? query.search().value() : null);
+            return new MerchantPage(page, page.size(), total);
         }
 
         List<AdminMerchant> mapped = fetchAllActiveLines().stream()
@@ -85,7 +87,7 @@ public class ListMerchantsUseCase {
                 .limit(query.page().limit())
                 .toList();
 
-        return new MerchantPage(page, page.size());
+        return new MerchantPage(page, page.size(), mapped.size());
     }
 
     private boolean canPushDown(MerchantQuery query) {
@@ -231,7 +233,7 @@ public class ListMerchantsUseCase {
         return comparator;
     }
 
-    public record MerchantPage(List<AdminMerchant> data, int count) {
+    public record MerchantPage(List<AdminMerchant> data, int count, long total) {
     }
 }
 
