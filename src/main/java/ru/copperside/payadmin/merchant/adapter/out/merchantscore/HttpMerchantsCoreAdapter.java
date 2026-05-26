@@ -28,6 +28,9 @@ public class HttpMerchantsCoreAdapter implements MerchantCatalogPort {
     private static final ParameterizedTypeReference<MerchantsCoreApiResponse<List<MerchantsCoreConfigEntry>>> CONFIGURATION_TYPE =
             new ParameterizedTypeReference<>() {
             };
+    private static final ParameterizedTypeReference<MerchantsCoreApiResponse<MerchantsCoreCount>> COUNT_TYPE =
+            new ParameterizedTypeReference<>() {
+            };
 
     private final MerchantsCoreProperties properties;
     private final RestClient restClient;
@@ -101,6 +104,30 @@ public class HttpMerchantsCoreAdapter implements MerchantCatalogPort {
                     .toList();
         } catch (RestClientResponseException | ResourceAccessException ex) {
             throw new UpstreamUnavailableException("merchants-core configuration request failed", ex);
+        }
+    }
+
+    @Override
+    public long countActiveLines(String search) {
+        try {
+            MerchantsCoreApiResponse<MerchantsCoreCount> response = restClient.get()
+                    .uri(builder -> {
+                        var uri = builder.path("/api/v1/merchants/configurations/active-line/count");
+                        if (search != null && !search.isBlank()) {
+                            uri.queryParam("search", search);
+                        }
+                        return uri.build();
+                    })
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(COUNT_TYPE);
+
+            if (response == null || response.data() == null) {
+                return 0L;
+            }
+            return response.data().total();
+        } catch (RestClientResponseException | ResourceAccessException ex) {
+            throw new UpstreamUnavailableException("merchants-core active-line count request failed", ex);
         }
     }
 

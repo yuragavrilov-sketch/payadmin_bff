@@ -7,5 +7,7 @@ public interface MerchantCatalogPort {
     List<MerchantConfigurationLine> fetchActiveLines(int limit, int offset, String search, String sortBy, String sortDir);
 
     List<MerchantConfigurationEntry> fetchActiveConfiguration(Long merchantId);
+
+    long countActiveLines(String search);
 }
 

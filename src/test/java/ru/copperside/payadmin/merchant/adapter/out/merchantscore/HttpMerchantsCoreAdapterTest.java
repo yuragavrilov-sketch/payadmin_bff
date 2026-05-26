@@ -110,6 +110,48 @@ class HttpMerchantsCoreAdapterTest {
                 .hasMessageContaining("merchants-core");
     }
 
+    @Test
+    void countActiveLinesParsesTotalAndSendsHeaders() throws Exception {
+        server.enqueue(json("""
+                {
+                  "data": { "total": 4572 },
+                  "error": null,
+                  "timestamp": "2026-05-25T20:00:00Z"
+                }
+                """));
+        MDC.put(RequestIdFilter.MDC_KEY, "00000000-0000-0000-0000-000000000042");
+
+        long total = client().countActiveLines(null);
+
+        assertThat(total).isEqualTo(4572L);
+        RecordedRequest request = server.takeRequest();
+        assertThat(request.getPath()).isEqualTo("/api/v1/merchants/configurations/active-line/count");
+        assertThat(request.getHeader("X-Core-Key")).isEqualTo("secret");
+        assertThat(request.getHeader("X-Request-Id")).isEqualTo("00000000-0000-0000-0000-000000000042");
+    }
+
+    @Test
+    void countActiveLinesForwardsSearchWhenPresent() throws Exception {
+        server.enqueue(json("""
+                { "data": { "total": 1 }, "error": null, "timestamp": "2026-05-25T20:00:00Z" }
+                """));
+
+        long total = client().countActiveLines("market");
+
+        assertThat(total).isEqualTo(1L);
+        RecordedRequest request = server.takeRequest();
+        assertThat(request.getPath()).isEqualTo("/api/v1/merchants/configurations/active-line/count?search=market");
+    }
+
+    @Test
+    void countActiveLinesMapsUpstreamErrorToUnavailable() {
+        server.enqueue(new MockResponse().setResponseCode(500).setBody("{}"));
+
+        assertThatThrownBy(() -> client().countActiveLines(null))
+                .isInstanceOf(UpstreamUnavailableException.class)
+                .hasMessageContaining("merchants-core");
+    }
+
     private HttpMerchantsCoreAdapter client() {
         return new HttpMerchantsCoreAdapter(properties());
     }

@@ -157,6 +157,7 @@ class ListMerchantsUseCaseTest {
         private final List<MerchantConfigurationLine> merchants = new ArrayList<>();
         private final List<Call> activeLineCalls = new ArrayList<>();
         private int activeConfigurationCalls = 0;
+        private int countCalls = 0;
 
         FakeMerchantCatalogPort withMerchant(Long mercId, String name, Map<String, String> configuration, Instant activeSince) {
             merchants.add(new MerchantConfigurationLine(mercId, name, configuration, activeSince));
@@ -177,6 +178,12 @@ class ListMerchantsUseCaseTest {
         public List<MerchantConfigurationEntry> fetchActiveConfiguration(Long merchantId) {
             activeConfigurationCalls++;
             return List.of();
+        }
+
+        @Override
+        public long countActiveLines(String search) {
+            countCalls++;
+            return merchants.size();
         }
     }
 }

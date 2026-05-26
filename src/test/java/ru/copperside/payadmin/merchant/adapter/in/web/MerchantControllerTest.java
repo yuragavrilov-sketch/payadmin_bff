@@ -151,6 +151,11 @@ class MerchantControllerTest {
         public List<MerchantConfigurationEntry> fetchActiveConfiguration(Long merchantId) {
             return List.of();
         }
+
+        @Override
+        public long countActiveLines(String search) {
+            return merchants.size();
+        }
     }
 }
 
