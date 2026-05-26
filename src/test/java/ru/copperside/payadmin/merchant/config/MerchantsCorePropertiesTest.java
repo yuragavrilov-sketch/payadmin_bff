@@ -1,6 +1,7 @@
 package ru.copperside.payadmin.merchant.config;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.bind.validation.BindValidationException;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
@@ -52,6 +53,15 @@ class MerchantsCorePropertiesTest {
                     assertThat(props.pageSize()).isEqualTo(250);
                     assertThat(props.maxPages()).isEqualTo(7);
                 });
+    }
+
+    @Test
+    void failsValidationForInvalidPageSize() {
+        contextRunner
+                .withPropertyValues("payadmin-bff.merchants-core.page-size=0")
+                .run(context -> assertThat(context.getStartupFailure())
+                        .hasRootCauseInstanceOf(BindValidationException.class)
+                        .hasStackTraceContaining("pageSize"));
     }
 
     @Configuration(proxyBeanMethods = false)

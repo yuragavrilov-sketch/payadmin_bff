@@ -1,6 +1,9 @@
 server:
   port: ${SERVER_PORT:8083}
 
+pay:
+  environment: ${PAY_ENVIRONMENT:local}
+
 spring:
   application:
     name: payadmin-bff
@@ -8,13 +11,19 @@ spring:
     default: local
   config:
     import:
-      - optional:configserver:${CONFIG_SERVER_URL:http://j-srv-config:8080}
+      - optional:configserver:${CONFIG_SERVER_URL:http://pay-config:8080}
       - optional:vault://
   cloud:
     config:
       enabled: ${CONFIG_SERVER_ENABLED:false}
+      label: ${CONFIG_SERVER_LABEL:${pay.environment}}
     vault:
       enabled: ${VAULT_ENABLED:false}
+      kv:
+        backend: ${VAULT_KV_BACKEND:pay}
+        default-context: ""
+        application-name: ${VAULT_KV_CONTEXTS:${pay.environment}/${spring.application.name}-merchants-core-internal-admin-key}
+        profiles: []
   security:
     oauth2:
       resourceserver:

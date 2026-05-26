@@ -94,6 +94,13 @@ Main environment variables:
 | Variable | Default | Description |
 |---|---|---|
 | `SERVER_PORT` | `8083` | HTTP port |
+| `PAY_ENVIRONMENT` | profile default: `local`, `test`, or `prod` | Environment id used for Config Server label and Vault paths |
+| `CONFIG_SERVER_URL` | `http://pay-config:8080` | Config Server URL |
+| `CONFIG_SERVER_ENABLED` | `false` locally, `true` in prod profile | Enables Config Server client |
+| `CONFIG_SERVER_LABEL` | `${PAY_ENVIRONMENT}` | Config Server git branch/label |
+| `VAULT_ENABLED` | `false` locally, `true` in prod profile | Enables Vault config import |
+| `VAULT_KV_BACKEND` | `pay` | Vault KV mount for shared environments |
+| `VAULT_KV_CONTEXTS` | `${PAY_ENVIRONMENT}/payadmin-bff-merchants-core-internal-admin-key` | Comma-separated exact Vault contexts |
 | `KEYCLOAK_ISSUER_URI` | `http://localhost:8080/realms/payadmin` | Keycloak issuer |
 | `PAYADMIN_REQUIRED_AUTHORITY` | empty | Optional authority required for `/api/**` |
 | `MERCHANTS_CORE_BASE_URL` | `http://localhost:8082` | Upstream base URL |
@@ -104,7 +111,27 @@ Main environment variables:
 | `PAYADMIN_UNKNOWN_MCC` | `0000` | Fallback MCC |
 
 Config Server and Vault imports are optional by default for local development.
-Production should inject secrets through Vault/config, not through source files.
+Production and shared test deployments should make imports mandatory with:
+
+```text
+CONFIG_SERVER_ENABLED=true
+VAULT_ENABLED=true
+SPRING_CONFIG_IMPORT=configserver:${CONFIG_SERVER_URL},vault://
+```
+
+Config Server stores non-secret settings on the branch selected by
+`CONFIG_SERVER_LABEL`. Vault stores secrets under the `pay` KV mount, one path
+per secret, for example:
+
+```text
+pay/prod/payadmin-bff-merchants-core-internal-admin-key
+```
+
+The secret value should use the target property key:
+
+```yaml
+payadmin-bff.merchants-core.internal-admin-api-key: <secret>
+```
 
 ## Local Run
 

@@ -1,6 +1,7 @@
 package ru.copperside.payadmin.merchant.config;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.bind.validation.BindValidationException;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
@@ -30,6 +31,15 @@ class PayadminMerchantsPropertiesTest {
 
                     assertThat(props.unknownMcc()).isEqualTo("9999");
                 });
+    }
+
+    @Test
+    void failsValidationForInvalidUnknownMcc() {
+        contextRunner
+                .withPropertyValues("payadmin-bff.merchants.unknown-mcc=bad")
+                .run(context -> assertThat(context.getStartupFailure())
+                        .hasRootCauseInstanceOf(BindValidationException.class)
+                        .hasStackTraceContaining("unknownMcc"));
     }
 
     @Configuration(proxyBeanMethods = false)

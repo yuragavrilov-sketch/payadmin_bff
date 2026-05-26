@@ -1,3 +1,6 @@
+pay:
+  environment: ${PAY_ENVIRONMENT:local}
+
 spring:
   cloud:
     config:
