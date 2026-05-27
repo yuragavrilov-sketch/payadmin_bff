@@ -53,7 +53,7 @@ class MerchantControllerTest {
     @BeforeEach
     void setUp() {
         merchantCatalogPort.clear()
-                .withMerchant(184L, "ООО «Ромашка»", "active", "5411",
+                .withMerchant(184L, "ООО «Ромашка»", "active", "5411", "7712345678",
                         Instant.parse("2025-02-04T10:00:00Z"));
 
         mockMvc = MockMvcBuilders.webAppContextSetup(context)
@@ -71,6 +71,7 @@ class MerchantControllerTest {
                 .andExpect(jsonPath("$.data[0].name").value("ООО «Ромашка»"))
                 .andExpect(jsonPath("$.data[0].status").value("active"))
                 .andExpect(jsonPath("$.data[0].mcc").value("5411"))
+                .andExpect(jsonPath("$.data[0].inn").value("7712345678"))
                 .andExpect(jsonPath("$.data[0].createdAt").value("2025-02-04T10:00:00Z"))
                 .andExpect(jsonPath("$.meta.limit").value(100))
                 .andExpect(jsonPath("$.meta.offset").value(0))
@@ -148,8 +149,8 @@ class MerchantControllerTest {
             return this;
         }
 
-        FakeMerchantCatalogPort withMerchant(Long mercId, String name, String status, String mcc, Instant createdAt) {
-            adminLines.add(new MerchantAdminLine(mercId, name, status, mcc, createdAt));
+        FakeMerchantCatalogPort withMerchant(Long mercId, String name, String status, String mcc, String inn, Instant createdAt) {
+            adminLines.add(new MerchantAdminLine(mercId, name, status, mcc, inn, createdAt));
             return this;
         }
 

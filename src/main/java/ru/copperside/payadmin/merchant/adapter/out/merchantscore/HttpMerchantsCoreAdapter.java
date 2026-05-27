@@ -164,7 +164,7 @@ public class HttpMerchantsCoreAdapter implements MerchantCatalogPort {
 
             List<MerchantAdminLine> lines = response.data().stream()
                     .map(dto -> new MerchantAdminLine(
-                            dto.mercId(), dto.name(), dto.status(), dto.mcc(), dto.createdAt()))
+                            dto.mercId(), dto.name(), dto.status(), dto.mcc(), dto.inn(), dto.createdAt()))
                     .toList();
             // admin-list always returns meta.total (COUNT(*) OVER()); lines.size() is a defensive
             // fallback only for a contract-violating response, kept >= the rows actually returned.

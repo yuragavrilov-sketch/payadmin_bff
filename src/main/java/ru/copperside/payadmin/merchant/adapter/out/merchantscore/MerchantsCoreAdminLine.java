@@ -10,6 +10,7 @@ public record MerchantsCoreAdminLine(
         String name,
         String status,
         String mcc,
+        String inn,
         Instant createdAt
 ) {
 }

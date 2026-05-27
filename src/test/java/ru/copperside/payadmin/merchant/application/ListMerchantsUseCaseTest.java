@@ -27,7 +27,7 @@ class ListMerchantsUseCaseTest {
     void mapsAdminLineToFrontendShape() {
         FakeMerchantCatalogPort client = new FakeMerchantCatalogPort()
                 .returning(7L, new MerchantAdminLine(184L, "ООО Ромашка", "active", "5411",
-                        Instant.parse("2025-02-04T10:00:00Z")));
+                        "7712345678", Instant.parse("2025-02-04T10:00:00Z")));
 
         ListMerchantsUseCase.MerchantPage page = service(client).list(defaultQuery());
 
@@ -38,13 +38,14 @@ class ListMerchantsUseCaseTest {
         assertThat(m.name()).isEqualTo("ООО Ромашка");
         assertThat(m.status()).isEqualTo(MerchantStatus.ACTIVE);
         assertThat(m.mcc()).isEqualTo("5411");
+        assertThat(m.inn()).isEqualTo("7712345678");
         assertThat(m.createdAt()).isEqualTo(Instant.parse("2025-02-04T10:00:00Z"));
     }
 
     @Test
     void nullCreatedAtFallsBackToEpoch() {
         FakeMerchantCatalogPort client = new FakeMerchantCatalogPort()
-                .returning(1L, new MerchantAdminLine(1L, "No Config", "blocked", "0000", null));
+                .returning(1L, new MerchantAdminLine(1L, "No Config", "blocked", "0000", null, null));
 
         AdminMerchant m = service(client).list(defaultQuery()).data().getFirst();
 
@@ -93,8 +94,8 @@ class ListMerchantsUseCaseTest {
     void unknownOrNullUpstreamStatusDefaultsToBlocked() {
         FakeMerchantCatalogPort client = new FakeMerchantCatalogPort()
                 .returning(2L,
-                        new MerchantAdminLine(1L, "Null Status", null, "5411", null),
-                        new MerchantAdminLine(2L, "Bogus Status", "pending", "5411", null));
+                        new MerchantAdminLine(1L, "Null Status", null, "5411", null, null),
+                        new MerchantAdminLine(2L, "Bogus Status", "pending", "5411", null, null));
 
         List<AdminMerchant> data = service(client).list(defaultQuery()).data();
 
