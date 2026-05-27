@@ -7,6 +7,7 @@ public enum MerchantSortField {
     NAME("name"),
     STATUS("status"),
     MCC("mcc"),
+    INN("inn"),
     CREATED_AT("createdAt");
 
     private final String value;

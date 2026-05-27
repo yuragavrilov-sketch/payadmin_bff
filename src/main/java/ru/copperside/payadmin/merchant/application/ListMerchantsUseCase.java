@@ -58,6 +58,7 @@ public class ListMerchantsUseCase {
                 line.name(),
                 parseStatus(line.status(), line.mercId()),
                 line.mcc(),
+                line.inn(),
                 createdAt
         );
     }

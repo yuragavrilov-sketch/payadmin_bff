@@ -7,6 +7,7 @@ public record AdminMerchant(
         String name,
         MerchantStatus status,
         String mcc,
+        String inn,
         Instant createdAt
 ) {
 }

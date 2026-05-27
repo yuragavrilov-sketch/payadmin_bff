@@ -9,6 +9,7 @@ public record MerchantResponse(
         String name,
         String status,
         String mcc,
+        String inn,
         Instant createdAt
 ) {
     static MerchantResponse from(AdminMerchant merchant) {
@@ -17,6 +18,7 @@ public record MerchantResponse(
                 merchant.name(),
                 merchant.status().value(),
                 merchant.mcc(),
+                merchant.inn(),
                 merchant.createdAt()
         );
     }

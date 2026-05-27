@@ -158,8 +158,8 @@ class HttpMerchantsCoreAdapterTest {
         server.enqueue(json("""
                 {
                   "data": [
-                    { "mercId": 4, "name": "Delta", "status": "active", "mcc": "5411", "createdAt": "2018-01-01T00:00:00Z" },
-                    { "mercId": 6, "name": "Foxtrot", "status": "blocked", "mcc": "0000", "createdAt": null }
+                    { "mercId": 4, "name": "Delta", "status": "active", "mcc": "5411", "inn": "7700000001", "createdAt": "2018-01-01T00:00:00Z" },
+                    { "mercId": 6, "name": "Foxtrot", "status": "blocked", "mcc": "0000", "inn": null, "createdAt": null }
                   ],
                   "meta": { "limit": 50, "offset": 0, "count": 2, "total": 42, "sortBy": "mercId", "sortDir": "asc" },
                   "error": null,
@@ -176,6 +176,8 @@ class HttpMerchantsCoreAdapterTest {
         assertThat(page.lines().get(0).status()).isEqualTo("active");
         assertThat(page.lines().get(0).createdAt()).isEqualTo(Instant.parse("2018-01-01T00:00:00Z"));
         assertThat(page.lines().get(1).createdAt()).isNull();
+        assertThat(page.lines().get(0).inn()).isEqualTo("7700000001");
+        assertThat(page.lines().get(1).inn()).isNull();
 
         RecordedRequest request = server.takeRequest();
         assertThat(request.getPath()).isEqualTo(
