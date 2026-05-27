@@ -7,6 +7,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
+import ru.copperside.payadmin.common.application.UpstreamProblemException;
 import ru.copperside.payadmin.common.web.RequestIdFilter;
 import ru.copperside.payadmin.limit.application.AssignMembershipCommand;
 import ru.copperside.payadmin.limit.application.CloseMembershipCommand;
@@ -32,11 +33,11 @@ import ru.copperside.payadmin.limit.domain.OperationType;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class HttpLimitManagementAdapterTest {
 
@@ -233,8 +234,19 @@ class HttpLimitManagementAdapterTest {
         assertThat(rule.operationTypeDirection()).isEqualTo(OperationDirection.IN);
         assertThat(rule.metric()).isEqualTo(LimitRuleMetric.AMOUNT);
         assertThat(rule.period()).isEqualTo(LimitRulePeriod.DAY);
-        assertThat(rule.amountLimit()).isEqualByComparingTo(new BigDecimal("100000.00"));
+        assertThat(rule.enabled()).isFalse();
         assertRequest("/internal/v1/limit-management/rules");
+    }
+
+    @Test
+    void getRuleReadsSingleRule() throws Exception {
+        server.enqueue(json(ruleEnvelope(LimitRuleStatus.DRAFT, 1)));
+
+        LimitRule rule = client().getRule(RULE_ID);
+
+        assertThat(rule.id()).isEqualTo(RULE_ID);
+        RecordedRequest request = assertRequest("/internal/v1/limit-management/rules/" + RULE_ID);
+        assertThat(request.getMethod()).isEqualTo("GET");
     }
 
     @Test
@@ -246,9 +258,7 @@ class HttpLimitManagementAdapterTest {
                 "SBP C2B daily amount",
                 OPERATION_TYPE_ID,
                 LimitRuleMetric.AMOUNT,
-                LimitRulePeriod.DAY,
-                new BigDecimal("100000.00"),
-                null
+                LimitRulePeriod.DAY
         ));
 
         assertThat(rule.status()).isEqualTo(LimitRuleStatus.DRAFT);
@@ -258,8 +268,7 @@ class HttpLimitManagementAdapterTest {
                 .contains("\"code\":\"RULE_SBP_C2B_DAY\"")
                 .contains("\"operationTypeId\":\"" + OPERATION_TYPE_ID + "\"")
                 .contains("\"metric\":\"AMOUNT\"")
-                .contains("\"period\":\"DAY\"")
-                .contains("\"amountLimit\":100000.00");
+                .contains("\"period\":\"DAY\"");
     }
 
     @Test
@@ -270,9 +279,7 @@ class HttpLimitManagementAdapterTest {
                 "SBP C2B weekly count",
                 OPERATION_TYPE_ID,
                 LimitRuleMetric.COUNT,
-                LimitRulePeriod.WEEK,
-                null,
-                25L
+                LimitRulePeriod.WEEK
         ));
 
         assertThat(rule.id()).isEqualTo(RULE_ID);
@@ -281,8 +288,36 @@ class HttpLimitManagementAdapterTest {
         assertThat(request.getBody().readUtf8())
                 .contains("\"name\":\"SBP C2B weekly count\"")
                 .contains("\"metric\":\"COUNT\"")
-                .contains("\"period\":\"WEEK\"")
-                .contains("\"countLimit\":25");
+                .contains("\"period\":\"WEEK\"");
+    }
+
+    @Test
+    void propagatesUpstreamProblemResponses() {
+        server.enqueue(new MockResponse()
+                .setResponseCode(409)
+                .setHeader("Content-Type", "application/problem+json")
+                .setBody("""
+                        {
+                          "error": {
+                            "type": "https://contracts.newpay/errors/rule-status-conflict",
+                            "title": "Rule status conflict",
+                            "status": 409,
+                            "code": "RULE_STATUS_CONFLICT",
+                            "message": "Only DRAFT rules can be activated",
+                            "details": null,
+                            "traceId": "00000000-0000-0000-0000-000000000111"
+                          },
+                          "timestamp": "2026-05-27T09:00:00Z"
+                        }
+                        """));
+
+        assertThatThrownBy(() -> client().activateRule(RULE_ID))
+                .isInstanceOf(UpstreamProblemException.class)
+                .satisfies(error -> {
+                    UpstreamProblemException problem = (UpstreamProblemException) error;
+                    assertThat(problem.statusCode().value()).isEqualTo(409);
+                    assertThat(problem.problem().error().code()).isEqualTo("RULE_STATUS_CONFLICT");
+                });
     }
 
     @Test
@@ -533,9 +568,7 @@ class HttpLimitManagementAdapterTest {
                   "code": "RULE_SBP_C2B_DAY",
                   "version": %s,
                   "name": "SBP C2B daily amount",
-                  "operationTypeId": "%s",
-                  "operationTypeCode": "SBP_C2B",
-                  "operationTypeDirection": "IN",
+                  "direction": "IN",
                   "operationSelector": {
                     "type": "TYPE",
                     "value": "SBP_C2B"
@@ -548,8 +581,6 @@ class HttpLimitManagementAdapterTest {
                   "metric": "AMOUNT",
                   "period": "DAY",
                   "currency": "RUB",
-                  "amountLimit": 100000.00,
-                  "countLimit": null,
                   "status": "%s",
                   "enabled": %s,
                   "createdAt": "2026-05-27T09:00:00Z",
@@ -557,6 +588,6 @@ class HttpLimitManagementAdapterTest {
                   "activatedAt": %s,
                   "disabledAt": %s
                 }
-                """.formatted(RULE_ID, version, OPERATION_TYPE_ID, status.name(), enabled, activatedAtJson, disabledAtJson);
+                """.formatted(RULE_ID, version, status.name(), enabled, activatedAtJson, disabledAtJson);
     }
 }

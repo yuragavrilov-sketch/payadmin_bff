@@ -47,6 +47,8 @@ public interface LimitManagementPort {
 
     List<LimitRule> listRules();
 
+    LimitRule getRule(UUID id);
+
     LimitRule createRule(CreateLimitRuleCommand command);
 
     LimitRule patchRule(UUID id, PatchLimitRuleCommand command);

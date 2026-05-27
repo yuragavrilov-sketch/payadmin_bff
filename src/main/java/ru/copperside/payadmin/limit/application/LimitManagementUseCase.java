@@ -70,6 +70,10 @@ public class LimitManagementUseCase {
         return port.listRules();
     }
 
+    public LimitRule getRule(UUID id) {
+        return port.getRule(id);
+    }
+
     public LimitRule createRule(CreateLimitRuleCommand command) {
         return port.createRule(command);
     }

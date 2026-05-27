@@ -42,6 +42,7 @@ public record LimitRuleResponse(
             attributeSelector = new Selector("NONE", null);
         }
         String direction = rule.operationTypeDirection() == null ? null : rule.operationTypeDirection().name();
+        boolean enabled = rule.status() != null && "ACTIVE".equals(rule.status().name());
         return new LimitRuleResponse(
                 rule.id(),
                 rule.code(),
@@ -60,7 +61,7 @@ public record LimitRuleResponse(
                 rule.amountLimit(),
                 rule.countLimit(),
                 rule.status() == null ? null : rule.status().name(),
-                rule.enabled(),
+                enabled,
                 rule.createdAt(),
                 rule.updatedAt(),
                 rule.activatedAt(),

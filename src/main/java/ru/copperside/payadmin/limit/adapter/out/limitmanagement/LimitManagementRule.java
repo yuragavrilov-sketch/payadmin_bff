@@ -45,7 +45,7 @@ record LimitManagementRule(
                 operationTypeDirection != null ? operationTypeDirection : direction
         );
         LimitRuleStatus resolvedStatus = enumValue(LimitRuleStatus.class, status);
-        boolean resolvedEnabled = enabled != null ? enabled : resolvedStatus == LimitRuleStatus.ACTIVE;
+        boolean resolvedEnabled = resolvedStatus == LimitRuleStatus.ACTIVE;
         return new LimitRule(
                 id,
                 code,

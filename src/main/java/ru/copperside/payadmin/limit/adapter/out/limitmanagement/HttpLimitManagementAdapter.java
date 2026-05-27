@@ -9,7 +9,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import ru.copperside.payadmin.common.application.UpstreamProblemException;
 import ru.copperside.payadmin.common.application.UpstreamUnavailableException;
+import ru.copperside.payadmin.common.web.ProblemEnvelope;
 import ru.copperside.payadmin.common.web.RequestIdFilter;
 import ru.copperside.payadmin.limit.application.AssignMembershipCommand;
 import ru.copperside.payadmin.limit.application.CloseMembershipCommand;
@@ -290,6 +292,18 @@ public class HttpLimitManagementAdapter implements LimitManagementPort {
     }
 
     @Override
+    public LimitRule getRule(UUID id) {
+        return call("limit-management rule get request failed", () -> {
+            LimitManagementApiResponse<LimitManagementRule> response = restClient.get()
+                    .uri("/internal/v1/limit-management/rules/{ruleId}", id)
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(RULE_TYPE);
+            return response == null || response.data() == null ? null : response.data().toDomain();
+        });
+    }
+
+    @Override
     public LimitRule createRule(CreateLimitRuleCommand command) {
         return call("limit-management rule create request failed", () -> {
             LimitManagementApiResponse<LimitManagementRule> response = restClient.post()
@@ -356,7 +370,13 @@ public class HttpLimitManagementAdapter implements LimitManagementPort {
     private <T> T call(String message, Supplier<T> supplier) {
         try {
             return supplier.get();
-        } catch (RestClientResponseException | ResourceAccessException ex) {
+        } catch (RestClientResponseException ex) {
+            ProblemEnvelope problem = ex.getResponseBodyAs(ProblemEnvelope.class);
+            if (problem != null && problem.error() != null) {
+                throw new UpstreamProblemException(ex.getStatusCode(), problem);
+            }
+            throw new UpstreamUnavailableException(message, ex);
+        } catch (ResourceAccessException ex) {
             throw new UpstreamUnavailableException(message, ex);
         }
     }

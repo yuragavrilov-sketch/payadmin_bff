@@ -43,7 +43,6 @@ import ru.copperside.payadmin.limit.domain.OperationType;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -306,6 +305,17 @@ class LimitControllerTest {
     }
 
     @Test
+    void getsRule() throws Exception {
+        mockMvc.perform(get("/api/v1/limits/rules/{ruleId}", RULE_ID)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(RULE_ID.toString()))
+                .andExpect(jsonPath("$.data.code").value("RULE_SBP_C2B_DAY"));
+
+        assertThat(limitManagementPort.lastGetLimitRuleId).isEqualTo(RULE_ID);
+    }
+
+    @Test
     void createsRule() throws Exception {
         mockMvc.perform(post("/api/v1/limits/rules")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -315,8 +325,7 @@ class LimitControllerTest {
                                   "name": "SBP C2B daily amount",
                                   "operationTypeId": "%s",
                                   "metric": "AMOUNT",
-                                  "period": "DAY",
-                                  "amountLimit": 100000.00
+                                  "period": "DAY"
                                 }
                                 """.formatted(OPERATION_TYPE_ID))
                         .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
@@ -330,9 +339,7 @@ class LimitControllerTest {
                         "SBP C2B daily amount",
                         OPERATION_TYPE_ID,
                         LimitRuleMetric.AMOUNT,
-                        LimitRulePeriod.DAY,
-                        new BigDecimal("100000.00"),
-                        null
+                        LimitRulePeriod.DAY
                 ));
     }
 
@@ -345,8 +352,7 @@ class LimitControllerTest {
                                   "name": "SBP C2B weekly count",
                                   "operationTypeId": "%s",
                                   "metric": "COUNT",
-                                  "period": "WEEK",
-                                  "countLimit": 25
+                                  "period": "WEEK"
                                 }
                                 """.formatted(OPERATION_TYPE_ID))
                         .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
@@ -360,9 +366,7 @@ class LimitControllerTest {
                         "SBP C2B weekly count",
                         OPERATION_TYPE_ID,
                         LimitRuleMetric.COUNT,
-                        LimitRulePeriod.WEEK,
-                        null,
-                        25L
+                        LimitRulePeriod.WEEK
                 ));
     }
 
@@ -442,6 +446,7 @@ class LimitControllerTest {
         private CreateOperationTypeCommand lastCreateOperationTypeCommand;
         private UUID lastPatchOperationTypeId;
         private PatchOperationTypeCommand lastPatchOperationTypeCommand;
+        private UUID lastGetLimitRuleId;
         private CreateLimitRuleCommand lastCreateLimitRuleCommand;
         private UUID lastPatchLimitRuleId;
         private PatchLimitRuleCommand lastPatchLimitRuleCommand;
@@ -464,6 +469,7 @@ class LimitControllerTest {
             lastCreateOperationTypeCommand = null;
             lastPatchOperationTypeId = null;
             lastPatchOperationTypeCommand = null;
+            lastGetLimitRuleId = null;
             lastCreateLimitRuleCommand = null;
             lastPatchLimitRuleId = null;
             lastPatchLimitRuleCommand = null;
@@ -568,6 +574,12 @@ class LimitControllerTest {
         @Override
         public List<LimitRule> listRules() {
             return List.of(rule(RULE_ID, 1, LimitRuleMetric.AMOUNT, LimitRulePeriod.DAY, LimitRuleStatus.DRAFT));
+        }
+
+        @Override
+        public LimitRule getRule(UUID id) {
+            lastGetLimitRuleId = id;
+            return rule(id, 1, LimitRuleMetric.AMOUNT, LimitRulePeriod.DAY, LimitRuleStatus.DRAFT);
         }
 
         @Override

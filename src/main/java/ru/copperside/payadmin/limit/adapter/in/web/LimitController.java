@@ -28,7 +28,6 @@ import ru.copperside.payadmin.limit.domain.LimitRuleMetric;
 import ru.copperside.payadmin.limit.domain.LimitRulePeriod;
 import ru.copperside.payadmin.limit.domain.OperationDirection;
 
-import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -186,6 +185,11 @@ public class LimitController {
         return ApiResponse.success(data, clock);
     }
 
+    @GetMapping("/rules/{ruleId}")
+    public ApiResponse<LimitRuleResponse> getRule(@PathVariable UUID ruleId) {
+        return ApiResponse.success(LimitRuleResponse.from(useCase.getRule(ruleId)), clock);
+    }
+
     @PostMapping("/rules")
     public ApiResponse<LimitRuleResponse> createRule(@Valid @RequestBody CreateRuleRequest request) {
         var rule = useCase.createRule(new CreateLimitRuleCommand(
@@ -193,9 +197,7 @@ public class LimitController {
                 request.name(),
                 request.operationTypeId(),
                 request.metric(),
-                request.period(),
-                request.amountLimit(),
-                request.countLimit()
+                request.period()
         ));
         return ApiResponse.success(LimitRuleResponse.from(rule), clock);
     }
@@ -209,9 +211,7 @@ public class LimitController {
                 request.name(),
                 request.operationTypeId(),
                 request.metric(),
-                request.period(),
-                request.amountLimit(),
-                request.countLimit()
+                request.period()
         ));
         return ApiResponse.success(LimitRuleResponse.from(rule), clock);
     }
@@ -279,9 +279,7 @@ public class LimitController {
             @NotBlank String name,
             @NotNull UUID operationTypeId,
             @NotNull LimitRuleMetric metric,
-            @NotNull LimitRulePeriod period,
-            BigDecimal amountLimit,
-            Long countLimit
+            @NotNull LimitRulePeriod period
     ) {
     }
 
@@ -289,9 +287,7 @@ public class LimitController {
             String name,
             UUID operationTypeId,
             LimitRuleMetric metric,
-            LimitRulePeriod period,
-            BigDecimal amountLimit,
-            Long countLimit
+            LimitRulePeriod period
     ) {
     }
 }

@@ -166,6 +166,14 @@ class LimitManagementUseCaseTest {
     }
 
     @Test
+    void delegatesRuleReadToPort() {
+        LimitRule rule = useCase.getRule(port.ruleId);
+
+        assertThat(rule.id()).isEqualTo(port.ruleId);
+        assertThat(port.capturedGetRuleId).isEqualTo(port.ruleId);
+    }
+
+    @Test
     void delegatesRuleCreationToPort() {
         CreateLimitRuleCommand command = new CreateLimitRuleCommand(
                 "RULE_SBP_C2B_DAY",
@@ -233,6 +241,7 @@ class LimitManagementUseCaseTest {
         UUID capturedGroupId;
         UUID capturedMembershipId;
         UUID capturedOperationTypeId;
+        UUID capturedGetRuleId;
         UUID capturedRuleId;
         UUID capturedActivateRuleId;
         UUID capturedDisableRuleId;
@@ -326,6 +335,12 @@ class LimitManagementUseCaseTest {
         @Override
         public List<LimitRule> listRules() {
             return List.of(rule(ruleId, 1, LimitRuleMetric.AMOUNT, LimitRulePeriod.DAY, LimitRuleStatus.DRAFT));
+        }
+
+        @Override
+        public LimitRule getRule(UUID id) {
+            capturedGetRuleId = id;
+            return rule(id, 1, LimitRuleMetric.AMOUNT, LimitRulePeriod.DAY, LimitRuleStatus.DRAFT);
         }
 
         @Override

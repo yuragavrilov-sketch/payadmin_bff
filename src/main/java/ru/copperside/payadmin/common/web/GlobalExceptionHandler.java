@@ -2,6 +2,7 @@ package ru.copperside.payadmin.common.web;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import ru.copperside.payadmin.common.application.UpstreamProblemException;
 import ru.copperside.payadmin.common.application.UpstreamUnavailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,6 +95,13 @@ public class GlobalExceptionHandler {
                 ex.getMessage(),
                 null
         );
+    }
+
+    @ExceptionHandler(UpstreamProblemException.class)
+    public ResponseEntity<ProblemEnvelope> handleUpstreamProblem(UpstreamProblemException ex) {
+        return ResponseEntity.status(ex.statusCode())
+                .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .body(ex.problem());
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
