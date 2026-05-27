@@ -47,6 +47,12 @@ springdoc:
     path: /swagger-ui.html
 
 payadmin-bff:
+  limit-management:
+    base-url: ${PAYADMIN_LIMIT_MANAGEMENT_BASE_URL:http://localhost:8084}
+    internal-admin-header-name: ${PAYADMIN_LIMIT_MANAGEMENT_INTERNAL_ADMIN_HEADER_NAME:X-Internal-Admin-Key}
+    internal-admin-api-key: ${PAYADMIN_LIMIT_MANAGEMENT_INTERNAL_ADMIN_API_KEY:}
+    connect-timeout: ${PAYADMIN_LIMIT_MANAGEMENT_CONNECT_TIMEOUT:2s}
+    read-timeout: ${PAYADMIN_LIMIT_MANAGEMENT_READ_TIMEOUT:5s}
   merchants-core:
     base-url: ${MERCHANTS_CORE_BASE_URL:http://localhost:8082}
     internal-admin-header-name: ${MERCHANTS_CORE_INTERNAL_ADMIN_HEADER:X-Internal-Admin-Key}
