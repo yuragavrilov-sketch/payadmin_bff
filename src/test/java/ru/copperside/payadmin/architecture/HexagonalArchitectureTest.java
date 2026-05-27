@@ -28,7 +28,7 @@ class HexagonalArchitectureTest {
     @Test
     void domainAndApplicationDoNotImportAdaptersOrWebInfrastructure() throws IOException {
         List<String> forbiddenImports = new ArrayList<>();
-        for (String capability : List.of("merchant", "limit")) {
+        for (String capability : List.of("merchant", "limit", "terminal")) {
             forbiddenImports.addAll(forbiddenBoundaryImports(capability));
         }
 
@@ -39,6 +39,7 @@ class HexagonalArchitectureTest {
     void capabilitiesHaveExpectedHexagonalPortsAndAdapters() {
         assertCapabilityStructure("merchant", "merchantscore");
         assertCapabilityStructure("limit", "limitmanagement");
+        assertCapabilityStructure("terminal", "merchantscore");
     }
 
     private List<Path> sourceFiles(Path root) throws IOException {
