@@ -2,9 +2,17 @@ package ru.copperside.payadmin.limit.application;
 
 import org.junit.jupiter.api.Test;
 import ru.copperside.payadmin.limit.application.port.out.LimitManagementPort;
+import ru.copperside.payadmin.limit.domain.LimitRule;
+import ru.copperside.payadmin.limit.domain.LimitRuleMetric;
+import ru.copperside.payadmin.limit.domain.LimitRulePeriod;
+import ru.copperside.payadmin.limit.domain.LimitRuleSelector;
+import ru.copperside.payadmin.limit.domain.LimitRuleStatus;
+import ru.copperside.payadmin.limit.domain.LimitTargetType;
 import ru.copperside.payadmin.limit.domain.MerchantGroup;
 import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
+import ru.copperside.payadmin.limit.domain.OperationDirection;
+import ru.copperside.payadmin.limit.domain.OperationType;
 
 import java.time.Instant;
 import java.util.List;
@@ -110,14 +118,125 @@ class LimitManagementUseCaseTest {
         assertThat(port.capturedCloseMembershipCommand).isEqualTo(command);
     }
 
+    @Test
+    void delegatesOperationTypeListingToPort() {
+        List<OperationType> types = useCase.listOperationTypes();
+
+        assertThat(types).hasSize(1);
+        assertThat(types.getFirst().code()).isEqualTo("SBP_C2B");
+    }
+
+    @Test
+    void delegatesOperationTypeCreationToPort() {
+        CreateOperationTypeCommand command = new CreateOperationTypeCommand(
+                "SBP_C2C",
+                "SBP C2C",
+                "SBP",
+                OperationDirection.ALL
+        );
+
+        OperationType type = useCase.createOperationType(command);
+
+        assertThat(type.code()).isEqualTo("SBP_C2C");
+        assertThat(port.capturedCreateOperationTypeCommand).isEqualTo(command);
+    }
+
+    @Test
+    void delegatesOperationTypePatchToPort() {
+        PatchOperationTypeCommand command = new PatchOperationTypeCommand(
+                "SBP C2B updated",
+                "SBP",
+                OperationDirection.IN,
+                false
+        );
+
+        OperationType type = useCase.patchOperationType(port.operationTypeId, command);
+
+        assertThat(type.enabled()).isFalse();
+        assertThat(port.capturedOperationTypeId).isEqualTo(port.operationTypeId);
+        assertThat(port.capturedPatchOperationTypeCommand).isEqualTo(command);
+    }
+
+    @Test
+    void delegatesRuleListingToPort() {
+        List<LimitRule> rules = useCase.listRules();
+
+        assertThat(rules).hasSize(1);
+        assertThat(rules.getFirst().operationTypeCode()).isEqualTo("SBP_C2B");
+    }
+
+    @Test
+    void delegatesRuleCreationToPort() {
+        CreateLimitRuleCommand command = new CreateLimitRuleCommand(
+                "RULE_SBP_C2B_DAY",
+                "SBP C2B daily amount",
+                port.operationTypeId,
+                LimitRuleMetric.AMOUNT,
+                LimitRulePeriod.DAY
+        );
+
+        LimitRule rule = useCase.createRule(command);
+
+        assertThat(rule.status()).isEqualTo(LimitRuleStatus.DRAFT);
+        assertThat(port.capturedCreateLimitRuleCommand).isEqualTo(command);
+    }
+
+    @Test
+    void delegatesRulePatchToPort() {
+        PatchLimitRuleCommand command = new PatchLimitRuleCommand(
+                "SBP C2B weekly count",
+                port.operationTypeId,
+                LimitRuleMetric.COUNT,
+                LimitRulePeriod.WEEK
+        );
+
+        LimitRule rule = useCase.patchRule(port.ruleId, command);
+
+        assertThat(rule.metric()).isEqualTo(LimitRuleMetric.COUNT);
+        assertThat(port.capturedRuleId).isEqualTo(port.ruleId);
+        assertThat(port.capturedPatchLimitRuleCommand).isEqualTo(command);
+    }
+
+    @Test
+    void delegatesRuleActivationToPort() {
+        LimitRule rule = useCase.activateRule(port.ruleId);
+
+        assertThat(rule.status()).isEqualTo(LimitRuleStatus.ACTIVE);
+        assertThat(port.capturedActivateRuleId).isEqualTo(port.ruleId);
+    }
+
+    @Test
+    void delegatesRuleDisableToPort() {
+        LimitRule rule = useCase.disableRule(port.ruleId);
+
+        assertThat(rule.status()).isEqualTo(LimitRuleStatus.DISABLED);
+        assertThat(port.capturedDisableRuleId).isEqualTo(port.ruleId);
+    }
+
+    @Test
+    void delegatesRuleNewVersionToPort() {
+        LimitRule rule = useCase.createNewRuleVersion(port.ruleId);
+
+        assertThat(rule.version()).isEqualTo(2);
+        assertThat(rule.status()).isEqualTo(LimitRuleStatus.DRAFT);
+        assertThat(port.capturedNewVersionRuleId).isEqualTo(port.ruleId);
+    }
+
     static class FakePort implements LimitManagementPort {
         final UUID typeId = UUID.randomUUID();
         final UUID groupId = UUID.randomUUID();
         final UUID membershipId = UUID.randomUUID();
+        final UUID operationTypeId = UUID.randomUUID();
+        final UUID ruleId = UUID.randomUUID();
         UUID capturedTypeId;
         UUID capturedGroupTypeId;
         UUID capturedGroupId;
         UUID capturedMembershipId;
+        UUID capturedOperationTypeId;
+        UUID capturedRuleId;
+        UUID capturedActivateRuleId;
+        UUID capturedDisableRuleId;
+        UUID capturedNewVersionRuleId;
         MembershipQuery capturedQuery;
         CreateGroupTypeCommand capturedCreateGroupTypeCommand;
         PatchGroupTypeCommand capturedPatchGroupTypeCommand;
@@ -125,6 +244,10 @@ class LimitManagementUseCaseTest {
         PatchGroupCommand capturedPatchGroupCommand;
         AssignMembershipCommand capturedAssignMembershipCommand;
         CloseMembershipCommand capturedCloseMembershipCommand;
+        CreateOperationTypeCommand capturedCreateOperationTypeCommand;
+        PatchOperationTypeCommand capturedPatchOperationTypeCommand;
+        CreateLimitRuleCommand capturedCreateLimitRuleCommand;
+        PatchLimitRuleCommand capturedPatchLimitRuleCommand;
 
         @Override
         public List<MerchantGroupType> listGroupTypes() {
@@ -180,6 +303,98 @@ class LimitManagementUseCaseTest {
             capturedMembershipId = id;
             capturedCloseMembershipCommand = command;
             return new MerchantGroupMembership(id, "502118", groupId, typeId, NOW, command.validTo(), NOW, "alice", command.validTo(), "bob");
+        }
+
+        @Override
+        public List<OperationType> listOperationTypes() {
+            return List.of(operationType("SBP_C2B", OperationDirection.IN, true));
+        }
+
+        @Override
+        public OperationType createOperationType(CreateOperationTypeCommand command) {
+            capturedCreateOperationTypeCommand = command;
+            return new OperationType(operationTypeId, command.code(), command.name(), command.familyCode(), command.direction(), true, NOW, NOW);
+        }
+
+        @Override
+        public OperationType patchOperationType(UUID id, PatchOperationTypeCommand command) {
+            capturedOperationTypeId = id;
+            capturedPatchOperationTypeCommand = command;
+            return new OperationType(id, "SBP_C2B", command.name(), command.familyCode(), command.direction(), command.enabled(), NOW, NOW);
+        }
+
+        @Override
+        public List<LimitRule> listRules() {
+            return List.of(rule(ruleId, 1, LimitRuleMetric.AMOUNT, LimitRulePeriod.DAY, LimitRuleStatus.DRAFT));
+        }
+
+        @Override
+        public LimitRule createRule(CreateLimitRuleCommand command) {
+            capturedCreateLimitRuleCommand = command;
+            return rule(ruleId, 1, command.metric(), command.period(), LimitRuleStatus.DRAFT);
+        }
+
+        @Override
+        public LimitRule patchRule(UUID id, PatchLimitRuleCommand command) {
+            capturedRuleId = id;
+            capturedPatchLimitRuleCommand = command;
+            return rule(id, 1, command.metric(), command.period(), LimitRuleStatus.DRAFT);
+        }
+
+        @Override
+        public LimitRule activateRule(UUID id) {
+            capturedActivateRuleId = id;
+            return rule(id, 1, LimitRuleMetric.AMOUNT, LimitRulePeriod.DAY, LimitRuleStatus.ACTIVE);
+        }
+
+        @Override
+        public LimitRule disableRule(UUID id) {
+            capturedDisableRuleId = id;
+            return rule(id, 1, LimitRuleMetric.AMOUNT, LimitRulePeriod.DAY, LimitRuleStatus.DISABLED);
+        }
+
+        @Override
+        public LimitRule createNewRuleVersion(UUID id) {
+            capturedNewVersionRuleId = id;
+            return rule(UUID.randomUUID(), 2, LimitRuleMetric.AMOUNT, LimitRulePeriod.DAY, LimitRuleStatus.DRAFT);
+        }
+
+        private OperationType operationType(String code, OperationDirection direction, boolean enabled) {
+            return new OperationType(operationTypeId, code, code.replace('_', ' '), "SBP", direction, enabled, NOW, NOW);
+        }
+
+        private LimitRule rule(
+                UUID id,
+                int version,
+                LimitRuleMetric metric,
+                LimitRulePeriod period,
+                LimitRuleStatus status
+        ) {
+            Instant activatedAt = status == LimitRuleStatus.ACTIVE || status == LimitRuleStatus.DISABLED ? NOW : null;
+            Instant disabledAt = status == LimitRuleStatus.DISABLED ? NOW : null;
+            return new LimitRule(
+                    id,
+                    "RULE_SBP_C2B_DAY",
+                    version,
+                    "SBP C2B daily amount",
+                    operationTypeId,
+                    "SBP_C2B",
+                    OperationDirection.IN,
+                    LimitTargetType.PHONE,
+                    metric,
+                    period,
+                    metric == LimitRuleMetric.AMOUNT ? "RUB" : null,
+                    null,
+                    null,
+                    status,
+                    NOW,
+                    NOW,
+                    activatedAt,
+                    disabledAt,
+                    status == LimitRuleStatus.ACTIVE,
+                    new LimitRuleSelector("TYPE", "SBP_C2B"),
+                    new LimitRuleSelector("NONE", null)
+            );
         }
     }
 }

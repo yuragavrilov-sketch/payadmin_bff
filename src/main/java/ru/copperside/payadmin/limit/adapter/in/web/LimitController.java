@@ -16,11 +16,19 @@ import ru.copperside.payadmin.limit.application.AssignMembershipCommand;
 import ru.copperside.payadmin.limit.application.CloseMembershipCommand;
 import ru.copperside.payadmin.limit.application.CreateGroupCommand;
 import ru.copperside.payadmin.limit.application.CreateGroupTypeCommand;
+import ru.copperside.payadmin.limit.application.CreateLimitRuleCommand;
+import ru.copperside.payadmin.limit.application.CreateOperationTypeCommand;
 import ru.copperside.payadmin.limit.application.LimitManagementUseCase;
 import ru.copperside.payadmin.limit.application.MembershipQuery;
 import ru.copperside.payadmin.limit.application.PatchGroupCommand;
 import ru.copperside.payadmin.limit.application.PatchGroupTypeCommand;
+import ru.copperside.payadmin.limit.application.PatchLimitRuleCommand;
+import ru.copperside.payadmin.limit.application.PatchOperationTypeCommand;
+import ru.copperside.payadmin.limit.domain.LimitRuleMetric;
+import ru.copperside.payadmin.limit.domain.LimitRulePeriod;
+import ru.copperside.payadmin.limit.domain.OperationDirection;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -137,6 +145,92 @@ public class LimitController {
         return ApiResponse.success(MerchantGroupMembershipResponse.from(membership), clock);
     }
 
+    @GetMapping("/operation-types")
+    public ApiResponse<List<OperationTypeResponse>> listOperationTypes() {
+        List<OperationTypeResponse> data = useCase.listOperationTypes().stream()
+                .map(OperationTypeResponse::from)
+                .toList();
+        return ApiResponse.success(data, clock);
+    }
+
+    @PostMapping("/operation-types")
+    public ApiResponse<OperationTypeResponse> createOperationType(@Valid @RequestBody CreateOperationTypeRequest request) {
+        var type = useCase.createOperationType(new CreateOperationTypeCommand(
+                request.code(),
+                request.name(),
+                request.familyCode(),
+                request.direction()
+        ));
+        return ApiResponse.success(OperationTypeResponse.from(type), clock);
+    }
+
+    @PatchMapping("/operation-types/{typeId}")
+    public ApiResponse<OperationTypeResponse> patchOperationType(
+            @PathVariable UUID typeId,
+            @Valid @RequestBody PatchOperationTypeRequest request
+    ) {
+        var type = useCase.patchOperationType(typeId, new PatchOperationTypeCommand(
+                request.name(),
+                request.familyCode(),
+                request.direction(),
+                request.enabled()
+        ));
+        return ApiResponse.success(OperationTypeResponse.from(type), clock);
+    }
+
+    @GetMapping("/rules")
+    public ApiResponse<List<LimitRuleResponse>> listRules() {
+        List<LimitRuleResponse> data = useCase.listRules().stream()
+                .map(LimitRuleResponse::from)
+                .toList();
+        return ApiResponse.success(data, clock);
+    }
+
+    @PostMapping("/rules")
+    public ApiResponse<LimitRuleResponse> createRule(@Valid @RequestBody CreateRuleRequest request) {
+        var rule = useCase.createRule(new CreateLimitRuleCommand(
+                request.code(),
+                request.name(),
+                request.operationTypeId(),
+                request.metric(),
+                request.period(),
+                request.amountLimit(),
+                request.countLimit()
+        ));
+        return ApiResponse.success(LimitRuleResponse.from(rule), clock);
+    }
+
+    @PatchMapping("/rules/{ruleId}")
+    public ApiResponse<LimitRuleResponse> patchRule(
+            @PathVariable UUID ruleId,
+            @Valid @RequestBody PatchRuleRequest request
+    ) {
+        var rule = useCase.patchRule(ruleId, new PatchLimitRuleCommand(
+                request.name(),
+                request.operationTypeId(),
+                request.metric(),
+                request.period(),
+                request.amountLimit(),
+                request.countLimit()
+        ));
+        return ApiResponse.success(LimitRuleResponse.from(rule), clock);
+    }
+
+    @PostMapping("/rules/{ruleId}/activate")
+    public ApiResponse<LimitRuleResponse> activateRule(@PathVariable UUID ruleId) {
+        return ApiResponse.success(LimitRuleResponse.from(useCase.activateRule(ruleId)), clock);
+    }
+
+    @PostMapping("/rules/{ruleId}/disable")
+    public ApiResponse<LimitRuleResponse> disableRule(@PathVariable UUID ruleId) {
+        return ApiResponse.success(LimitRuleResponse.from(useCase.disableRule(ruleId)), clock);
+    }
+
+    @PostMapping("/rules/{ruleId}/new-version")
+    public ApiResponse<LimitRuleResponse> createNewRuleVersion(@PathVariable UUID ruleId) {
+        return ApiResponse.success(LimitRuleResponse.from(useCase.createNewRuleVersion(ruleId)), clock);
+    }
+
     public record CreateGroupTypeRequest(
             @NotBlank String code,
             @NotBlank String name,
@@ -167,5 +261,37 @@ public class LimitController {
     }
 
     public record CloseMembershipRequest(@NotNull Instant validTo) {
+    }
+
+    public record CreateOperationTypeRequest(
+            @NotBlank String code,
+            @NotBlank String name,
+            @NotBlank String familyCode,
+            @NotNull OperationDirection direction
+    ) {
+    }
+
+    public record PatchOperationTypeRequest(String name, String familyCode, OperationDirection direction, Boolean enabled) {
+    }
+
+    public record CreateRuleRequest(
+            @NotBlank String code,
+            @NotBlank String name,
+            @NotNull UUID operationTypeId,
+            @NotNull LimitRuleMetric metric,
+            @NotNull LimitRulePeriod period,
+            BigDecimal amountLimit,
+            Long countLimit
+    ) {
+    }
+
+    public record PatchRuleRequest(
+            String name,
+            UUID operationTypeId,
+            LimitRuleMetric metric,
+            LimitRulePeriod period,
+            BigDecimal amountLimit,
+            Long countLimit
+    ) {
     }
 }

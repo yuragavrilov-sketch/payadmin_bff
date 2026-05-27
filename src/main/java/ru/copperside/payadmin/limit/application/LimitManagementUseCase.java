@@ -1,9 +1,11 @@
 package ru.copperside.payadmin.limit.application;
 
 import ru.copperside.payadmin.limit.application.port.out.LimitManagementPort;
+import ru.copperside.payadmin.limit.domain.LimitRule;
 import ru.copperside.payadmin.limit.domain.MerchantGroup;
 import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
+import ru.copperside.payadmin.limit.domain.OperationType;
 
 import java.util.List;
 import java.util.UUID;
@@ -50,5 +52,41 @@ public class LimitManagementUseCase {
 
     public MerchantGroupMembership closeMembership(UUID id, CloseMembershipCommand command) {
         return port.closeMembership(id, command);
+    }
+
+    public List<OperationType> listOperationTypes() {
+        return port.listOperationTypes();
+    }
+
+    public OperationType createOperationType(CreateOperationTypeCommand command) {
+        return port.createOperationType(command);
+    }
+
+    public OperationType patchOperationType(UUID id, PatchOperationTypeCommand command) {
+        return port.patchOperationType(id, command);
+    }
+
+    public List<LimitRule> listRules() {
+        return port.listRules();
+    }
+
+    public LimitRule createRule(CreateLimitRuleCommand command) {
+        return port.createRule(command);
+    }
+
+    public LimitRule patchRule(UUID id, PatchLimitRuleCommand command) {
+        return port.patchRule(id, command);
+    }
+
+    public LimitRule activateRule(UUID id) {
+        return port.activateRule(id);
+    }
+
+    public LimitRule disableRule(UUID id) {
+        return port.disableRule(id);
+    }
+
+    public LimitRule createNewRuleVersion(UUID id) {
+        return port.createNewRuleVersion(id);
     }
 }

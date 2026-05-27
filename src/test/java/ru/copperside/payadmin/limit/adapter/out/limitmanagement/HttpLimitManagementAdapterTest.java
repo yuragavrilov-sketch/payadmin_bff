@@ -12,16 +12,27 @@ import ru.copperside.payadmin.limit.application.AssignMembershipCommand;
 import ru.copperside.payadmin.limit.application.CloseMembershipCommand;
 import ru.copperside.payadmin.limit.application.CreateGroupCommand;
 import ru.copperside.payadmin.limit.application.CreateGroupTypeCommand;
+import ru.copperside.payadmin.limit.application.CreateLimitRuleCommand;
+import ru.copperside.payadmin.limit.application.CreateOperationTypeCommand;
 import ru.copperside.payadmin.limit.application.MembershipQuery;
 import ru.copperside.payadmin.limit.application.PatchGroupCommand;
 import ru.copperside.payadmin.limit.application.PatchGroupTypeCommand;
+import ru.copperside.payadmin.limit.application.PatchLimitRuleCommand;
+import ru.copperside.payadmin.limit.application.PatchOperationTypeCommand;
 import ru.copperside.payadmin.limit.config.LimitManagementProperties;
+import ru.copperside.payadmin.limit.domain.LimitRule;
+import ru.copperside.payadmin.limit.domain.LimitRuleMetric;
+import ru.copperside.payadmin.limit.domain.LimitRulePeriod;
+import ru.copperside.payadmin.limit.domain.LimitRuleStatus;
 import ru.copperside.payadmin.limit.domain.MerchantGroup;
 import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
+import ru.copperside.payadmin.limit.domain.OperationDirection;
+import ru.copperside.payadmin.limit.domain.OperationType;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,6 +43,8 @@ class HttpLimitManagementAdapterTest {
     private static final UUID TYPE_ID = UUID.fromString("77fe773f-f6f3-4e07-b6fb-d707f7e373d3");
     private static final UUID GROUP_ID = UUID.fromString("1cf49b4d-c96c-4ff4-8f85-5cb508fb8137");
     private static final UUID MEMBERSHIP_ID = UUID.fromString("e0395e16-34cc-4cc3-87c0-8d9cc6d17bd2");
+    private static final UUID OPERATION_TYPE_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID RULE_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
     private static final Instant NOW = Instant.parse("2026-05-27T09:00:00Z");
 
     private MockWebServer server;
@@ -161,6 +174,151 @@ class HttpLimitManagementAdapterTest {
         RecordedRequest request = assertRequest("/internal/v1/limit-management/merchant-group-memberships/" + MEMBERSHIP_ID + "/close");
         assertThat(request.getMethod()).isEqualTo("POST");
         assertThat(request.getBody().readUtf8()).contains("\"validTo\":\"2026-05-27T15:00:00Z\"");
+    }
+
+    @Test
+    void listOperationTypesSendsInternalHeadersAndMapsEnvelope() throws Exception {
+        server.enqueue(json(operationTypesEnvelope()));
+
+        List<OperationType> types = client().listOperationTypes();
+
+        assertThat(types).containsExactly(new OperationType(
+                OPERATION_TYPE_ID, "SBP_C2B", "SBP C2B", "SBP", OperationDirection.IN, true, NOW, NOW));
+        assertRequest("/internal/v1/limit-management/operation-types");
+    }
+
+    @Test
+    void createOperationTypePostsJson() throws Exception {
+        server.enqueue(json(operationTypeEnvelope(true)));
+
+        OperationType type = client().createOperationType(new CreateOperationTypeCommand("SBP_C2C", "SBP C2C", "SBP", OperationDirection.ALL));
+
+        assertThat(type.direction()).isEqualTo(OperationDirection.IN);
+        RecordedRequest request = assertRequest("/internal/v1/limit-management/operation-types");
+        assertThat(request.getMethod()).isEqualTo("POST");
+        assertThat(request.getBody().readUtf8())
+                .contains("\"code\":\"SBP_C2C\"")
+                .contains("\"familyCode\":\"SBP\"")
+                .contains("\"direction\":\"ALL\"");
+    }
+
+    @Test
+    void patchOperationTypeSendsPatch() throws Exception {
+        server.enqueue(json(operationTypeEnvelope(false)));
+
+        OperationType type = client().patchOperationType(OPERATION_TYPE_ID, new PatchOperationTypeCommand(
+                "SBP C2B updated",
+                "SBP",
+                OperationDirection.IN,
+                false
+        ));
+
+        assertThat(type.enabled()).isFalse();
+        RecordedRequest request = assertRequest("/internal/v1/limit-management/operation-types/" + OPERATION_TYPE_ID);
+        assertThat(request.getMethod()).isEqualTo("PATCH");
+        assertThat(request.getBody().readUtf8())
+                .contains("\"name\":\"SBP C2B updated\"")
+                .contains("\"enabled\":false");
+    }
+
+    @Test
+    void listRulesMapsVersionedRuleFields() throws Exception {
+        server.enqueue(json(rulesEnvelope(LimitRuleStatus.DRAFT, 1)));
+
+        List<LimitRule> rules = client().listRules();
+
+        assertThat(rules).hasSize(1);
+        LimitRule rule = rules.getFirst();
+        assertThat(rule.operationTypeCode()).isEqualTo("SBP_C2B");
+        assertThat(rule.operationTypeDirection()).isEqualTo(OperationDirection.IN);
+        assertThat(rule.metric()).isEqualTo(LimitRuleMetric.AMOUNT);
+        assertThat(rule.period()).isEqualTo(LimitRulePeriod.DAY);
+        assertThat(rule.amountLimit()).isEqualByComparingTo(new BigDecimal("100000.00"));
+        assertRequest("/internal/v1/limit-management/rules");
+    }
+
+    @Test
+    void createRulePostsJson() throws Exception {
+        server.enqueue(json(ruleEnvelope(LimitRuleStatus.DRAFT, 1)));
+
+        LimitRule rule = client().createRule(new CreateLimitRuleCommand(
+                "RULE_SBP_C2B_DAY",
+                "SBP C2B daily amount",
+                OPERATION_TYPE_ID,
+                LimitRuleMetric.AMOUNT,
+                LimitRulePeriod.DAY,
+                new BigDecimal("100000.00"),
+                null
+        ));
+
+        assertThat(rule.status()).isEqualTo(LimitRuleStatus.DRAFT);
+        RecordedRequest request = assertRequest("/internal/v1/limit-management/rules");
+        assertThat(request.getMethod()).isEqualTo("POST");
+        assertThat(request.getBody().readUtf8())
+                .contains("\"code\":\"RULE_SBP_C2B_DAY\"")
+                .contains("\"operationTypeId\":\"" + OPERATION_TYPE_ID + "\"")
+                .contains("\"metric\":\"AMOUNT\"")
+                .contains("\"period\":\"DAY\"")
+                .contains("\"amountLimit\":100000.00");
+    }
+
+    @Test
+    void patchRuleSendsPatch() throws Exception {
+        server.enqueue(json(ruleEnvelope(LimitRuleStatus.DRAFT, 1)));
+
+        LimitRule rule = client().patchRule(RULE_ID, new PatchLimitRuleCommand(
+                "SBP C2B weekly count",
+                OPERATION_TYPE_ID,
+                LimitRuleMetric.COUNT,
+                LimitRulePeriod.WEEK,
+                null,
+                25L
+        ));
+
+        assertThat(rule.id()).isEqualTo(RULE_ID);
+        RecordedRequest request = assertRequest("/internal/v1/limit-management/rules/" + RULE_ID);
+        assertThat(request.getMethod()).isEqualTo("PATCH");
+        assertThat(request.getBody().readUtf8())
+                .contains("\"name\":\"SBP C2B weekly count\"")
+                .contains("\"metric\":\"COUNT\"")
+                .contains("\"period\":\"WEEK\"")
+                .contains("\"countLimit\":25");
+    }
+
+    @Test
+    void activateRulePostsLifecycleRequest() throws Exception {
+        server.enqueue(json(ruleEnvelope(LimitRuleStatus.ACTIVE, 1)));
+
+        LimitRule rule = client().activateRule(RULE_ID);
+
+        assertThat(rule.status()).isEqualTo(LimitRuleStatus.ACTIVE);
+        RecordedRequest request = assertRequest("/internal/v1/limit-management/rules/" + RULE_ID + "/activate");
+        assertThat(request.getMethod()).isEqualTo("POST");
+        assertThat(request.getBody().readUtf8()).isEmpty();
+    }
+
+    @Test
+    void disableRulePostsLifecycleRequest() throws Exception {
+        server.enqueue(json(ruleEnvelope(LimitRuleStatus.DISABLED, 1)));
+
+        LimitRule rule = client().disableRule(RULE_ID);
+
+        assertThat(rule.status()).isEqualTo(LimitRuleStatus.DISABLED);
+        RecordedRequest request = assertRequest("/internal/v1/limit-management/rules/" + RULE_ID + "/disable");
+        assertThat(request.getMethod()).isEqualTo("POST");
+        assertThat(request.getBody().readUtf8()).isEmpty();
+    }
+
+    @Test
+    void createNewRuleVersionPostsLifecycleRequest() throws Exception {
+        server.enqueue(json(ruleEnvelope(LimitRuleStatus.DRAFT, 2)));
+
+        LimitRule rule = client().createNewRuleVersion(RULE_ID);
+
+        assertThat(rule.version()).isEqualTo(2);
+        RecordedRequest request = assertRequest("/internal/v1/limit-management/rules/" + RULE_ID + "/new-version");
+        assertThat(request.getMethod()).isEqualTo("POST");
+        assertThat(request.getBody().readUtf8()).isEmpty();
     }
 
     private RecordedRequest assertRequest(String path) throws Exception {
@@ -302,5 +460,103 @@ class HttpLimitManagementAdapterTest {
                   "closedBy": %s
                 }
                 """.formatted(MEMBERSHIP_ID, GROUP_ID, TYPE_ID, validToJson, closedAtJson, closedByJson);
+    }
+
+    private String operationTypesEnvelope() {
+        return """
+                {
+                  "data": [%s],
+                  "meta": null,
+                  "error": null,
+                  "timestamp": "2026-05-27T09:00:00Z"
+                }
+                """.formatted(operationTypeJson(true));
+    }
+
+    private String operationTypeEnvelope(boolean enabled) {
+        return """
+                {
+                  "data": %s,
+                  "meta": null,
+                  "error": null,
+                  "timestamp": "2026-05-27T09:00:00Z"
+                }
+                """.formatted(operationTypeJson(enabled));
+    }
+
+    private String operationTypeJson(boolean enabled) {
+        return """
+                {
+                  "id": "%s",
+                  "code": "SBP_C2B",
+                  "name": "SBP C2B",
+                  "familyCode": "SBP",
+                  "direction": "IN",
+                  "enabled": %s,
+                  "createdAt": "2026-05-27T09:00:00Z",
+                  "updatedAt": "2026-05-27T09:00:00Z"
+                }
+                """.formatted(OPERATION_TYPE_ID, enabled);
+    }
+
+    private String rulesEnvelope(LimitRuleStatus status, int version) {
+        return """
+                {
+                  "data": [%s],
+                  "meta": null,
+                  "error": null,
+                  "timestamp": "2026-05-27T09:00:00Z"
+                }
+                """.formatted(ruleJson(status, version));
+    }
+
+    private String ruleEnvelope(LimitRuleStatus status, int version) {
+        return """
+                {
+                  "data": %s,
+                  "meta": null,
+                  "error": null,
+                  "timestamp": "2026-05-27T09:00:00Z"
+                }
+                """.formatted(ruleJson(status, version));
+    }
+
+    private String ruleJson(LimitRuleStatus status, int version) {
+        String activatedAtJson = status == LimitRuleStatus.ACTIVE || status == LimitRuleStatus.DISABLED
+                ? "\"2026-05-27T09:00:00Z\""
+                : "null";
+        String disabledAtJson = status == LimitRuleStatus.DISABLED ? "\"2026-05-27T09:00:00Z\"" : "null";
+        boolean enabled = status == LimitRuleStatus.ACTIVE;
+        return """
+                {
+                  "id": "%s",
+                  "code": "RULE_SBP_C2B_DAY",
+                  "version": %s,
+                  "name": "SBP C2B daily amount",
+                  "operationTypeId": "%s",
+                  "operationTypeCode": "SBP_C2B",
+                  "operationTypeDirection": "IN",
+                  "operationSelector": {
+                    "type": "TYPE",
+                    "value": "SBP_C2B"
+                  },
+                  "attributeSelector": {
+                    "type": "NONE",
+                    "value": null
+                  },
+                  "targetType": "PHONE",
+                  "metric": "AMOUNT",
+                  "period": "DAY",
+                  "currency": "RUB",
+                  "amountLimit": 100000.00,
+                  "countLimit": null,
+                  "status": "%s",
+                  "enabled": %s,
+                  "createdAt": "2026-05-27T09:00:00Z",
+                  "updatedAt": "2026-05-27T09:00:00Z",
+                  "activatedAt": %s,
+                  "disabledAt": %s
+                }
+                """.formatted(RULE_ID, version, OPERATION_TYPE_ID, status.name(), enabled, activatedAtJson, disabledAtJson);
     }
 }

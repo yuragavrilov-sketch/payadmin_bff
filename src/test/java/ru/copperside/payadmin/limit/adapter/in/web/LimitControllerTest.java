@@ -20,17 +20,30 @@ import ru.copperside.payadmin.limit.application.AssignMembershipCommand;
 import ru.copperside.payadmin.limit.application.CloseMembershipCommand;
 import ru.copperside.payadmin.limit.application.CreateGroupCommand;
 import ru.copperside.payadmin.limit.application.CreateGroupTypeCommand;
+import ru.copperside.payadmin.limit.application.CreateLimitRuleCommand;
+import ru.copperside.payadmin.limit.application.CreateOperationTypeCommand;
 import ru.copperside.payadmin.limit.application.MembershipQuery;
 import ru.copperside.payadmin.limit.application.PatchGroupCommand;
 import ru.copperside.payadmin.limit.application.PatchGroupTypeCommand;
+import ru.copperside.payadmin.limit.application.PatchLimitRuleCommand;
+import ru.copperside.payadmin.limit.application.PatchOperationTypeCommand;
 import ru.copperside.payadmin.limit.application.port.out.LimitManagementPort;
+import ru.copperside.payadmin.limit.domain.LimitRule;
+import ru.copperside.payadmin.limit.domain.LimitRuleMetric;
+import ru.copperside.payadmin.limit.domain.LimitRulePeriod;
+import ru.copperside.payadmin.limit.domain.LimitRuleSelector;
+import ru.copperside.payadmin.limit.domain.LimitRuleStatus;
+import ru.copperside.payadmin.limit.domain.LimitTargetType;
 import ru.copperside.payadmin.limit.domain.MerchantGroup;
 import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
+import ru.copperside.payadmin.limit.domain.OperationDirection;
+import ru.copperside.payadmin.limit.domain.OperationType;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -54,6 +67,8 @@ class LimitControllerTest {
     private static final UUID TYPE_ID = UUID.fromString("77fe773f-f6f3-4e07-b6fb-d707f7e373d3");
     private static final UUID GROUP_ID = UUID.fromString("dc6b2af5-8a04-4d05-8c99-33914b6cc3ab");
     private static final UUID MEMBERSHIP_ID = UUID.fromString("49d059b8-93d6-4d89-b681-d7ae68dfc2a1");
+    private static final UUID OPERATION_TYPE_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID RULE_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
     private static final Instant NOW = Instant.parse("2026-05-27T09:00:00Z");
 
     @Autowired
@@ -226,6 +241,164 @@ class LimitControllerTest {
                 .isEqualTo(new CloseMembershipCommand(Instant.parse("2026-05-27T15:00:00Z")));
     }
 
+    @Test
+    void listsOperationTypes() throws Exception {
+        mockMvc.perform(get("/api/v1/limits/operation-types")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].code").value("SBP_C2B"))
+                .andExpect(jsonPath("$.data[0].familyCode").value("SBP"))
+                .andExpect(jsonPath("$.data[0].direction").value("IN"))
+                .andExpect(jsonPath("$.timestamp").value("2026-05-27T09:00:00Z"));
+    }
+
+    @Test
+    void createsOperationType() throws Exception {
+        mockMvc.perform(post("/api/v1/limits/operation-types")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "code": "SBP_C2C",
+                                  "name": "SBP C2C",
+                                  "familyCode": "SBP",
+                                  "direction": "ALL"
+                                }
+                                """)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.code").value("SBP_C2C"));
+
+        assertThat(limitManagementPort.lastCreateOperationTypeCommand)
+                .isEqualTo(new CreateOperationTypeCommand("SBP_C2C", "SBP C2C", "SBP", OperationDirection.ALL));
+    }
+
+    @Test
+    void patchesOperationType() throws Exception {
+        mockMvc.perform(patch("/api/v1/limits/operation-types/{typeId}", OPERATION_TYPE_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "SBP C2B updated",
+                                  "familyCode": "SBP",
+                                  "direction": "IN",
+                                  "enabled": false
+                                }
+                                """)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.enabled").value(false));
+
+        assertThat(limitManagementPort.lastPatchOperationTypeId).isEqualTo(OPERATION_TYPE_ID);
+        assertThat(limitManagementPort.lastPatchOperationTypeCommand)
+                .isEqualTo(new PatchOperationTypeCommand("SBP C2B updated", "SBP", OperationDirection.IN, false));
+    }
+
+    @Test
+    void listsRules() throws Exception {
+        mockMvc.perform(get("/api/v1/limits/rules")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].operationTypeCode").value("SBP_C2B"))
+                .andExpect(jsonPath("$.data[0].operationTypeDirection").value("IN"))
+                .andExpect(jsonPath("$.data[0].targetType").value("PHONE"))
+                .andExpect(jsonPath("$.data[0].status").value("DRAFT"))
+                .andExpect(jsonPath("$.data[0].operationSelector.value").value("SBP_C2B"));
+    }
+
+    @Test
+    void createsRule() throws Exception {
+        mockMvc.perform(post("/api/v1/limits/rules")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "code": "RULE_SBP_C2B_DAY",
+                                  "name": "SBP C2B daily amount",
+                                  "operationTypeId": "%s",
+                                  "metric": "AMOUNT",
+                                  "period": "DAY",
+                                  "amountLimit": 100000.00
+                                }
+                                """.formatted(OPERATION_TYPE_ID))
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.code").value("RULE_SBP_C2B_DAY"))
+                .andExpect(jsonPath("$.data.status").value("DRAFT"));
+
+        assertThat(limitManagementPort.lastCreateLimitRuleCommand)
+                .isEqualTo(new CreateLimitRuleCommand(
+                        "RULE_SBP_C2B_DAY",
+                        "SBP C2B daily amount",
+                        OPERATION_TYPE_ID,
+                        LimitRuleMetric.AMOUNT,
+                        LimitRulePeriod.DAY,
+                        new BigDecimal("100000.00"),
+                        null
+                ));
+    }
+
+    @Test
+    void patchesRule() throws Exception {
+        mockMvc.perform(patch("/api/v1/limits/rules/{ruleId}", RULE_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "SBP C2B weekly count",
+                                  "operationTypeId": "%s",
+                                  "metric": "COUNT",
+                                  "period": "WEEK",
+                                  "countLimit": 25
+                                }
+                                """.formatted(OPERATION_TYPE_ID))
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.metric").value("COUNT"))
+                .andExpect(jsonPath("$.data.currency").value(nullValue()));
+
+        assertThat(limitManagementPort.lastPatchLimitRuleId).isEqualTo(RULE_ID);
+        assertThat(limitManagementPort.lastPatchLimitRuleCommand)
+                .isEqualTo(new PatchLimitRuleCommand(
+                        "SBP C2B weekly count",
+                        OPERATION_TYPE_ID,
+                        LimitRuleMetric.COUNT,
+                        LimitRulePeriod.WEEK,
+                        null,
+                        25L
+                ));
+    }
+
+    @Test
+    void activatesRule() throws Exception {
+        mockMvc.perform(post("/api/v1/limits/rules/{ruleId}/activate", RULE_ID)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.data.activatedAt").value("2026-05-27T09:00:00Z"));
+
+        assertThat(limitManagementPort.lastActivateRuleId).isEqualTo(RULE_ID);
+    }
+
+    @Test
+    void disablesRule() throws Exception {
+        mockMvc.perform(post("/api/v1/limits/rules/{ruleId}/disable", RULE_ID)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("DISABLED"))
+                .andExpect(jsonPath("$.data.disabledAt").value("2026-05-27T09:00:00Z"));
+
+        assertThat(limitManagementPort.lastDisableRuleId).isEqualTo(RULE_ID);
+    }
+
+    @Test
+    void createsNewRuleVersion() throws Exception {
+        mockMvc.perform(post("/api/v1/limits/rules/{ruleId}/new-version", RULE_ID)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.version").value(2))
+                .andExpect(jsonPath("$.data.status").value("DRAFT"));
+
+        assertThat(limitManagementPort.lastNewVersionRuleId).isEqualTo(RULE_ID);
+    }
+
     @TestConfiguration(proxyBeanMethods = false)
     static class TestSupport {
 
@@ -266,6 +439,15 @@ class LimitControllerTest {
         private AssignMembershipCommand lastAssignMembershipCommand;
         private UUID lastCloseMembershipId;
         private CloseMembershipCommand lastCloseMembershipCommand;
+        private CreateOperationTypeCommand lastCreateOperationTypeCommand;
+        private UUID lastPatchOperationTypeId;
+        private PatchOperationTypeCommand lastPatchOperationTypeCommand;
+        private CreateLimitRuleCommand lastCreateLimitRuleCommand;
+        private UUID lastPatchLimitRuleId;
+        private PatchLimitRuleCommand lastPatchLimitRuleCommand;
+        private UUID lastActivateRuleId;
+        private UUID lastDisableRuleId;
+        private UUID lastNewVersionRuleId;
 
         FakeLimitManagementPort clear() {
             lastListGroupsTypeId = null;
@@ -279,6 +461,15 @@ class LimitControllerTest {
             lastAssignMembershipCommand = null;
             lastCloseMembershipId = null;
             lastCloseMembershipCommand = null;
+            lastCreateOperationTypeCommand = null;
+            lastPatchOperationTypeId = null;
+            lastPatchOperationTypeCommand = null;
+            lastCreateLimitRuleCommand = null;
+            lastPatchLimitRuleId = null;
+            lastPatchLimitRuleCommand = null;
+            lastActivateRuleId = null;
+            lastDisableRuleId = null;
+            lastNewVersionRuleId = null;
             return this;
         }
 
@@ -356,6 +547,60 @@ class LimitControllerTest {
             return membership(Instant.parse("2026-05-27T10:00:00Z"), command.validTo());
         }
 
+        @Override
+        public List<OperationType> listOperationTypes() {
+            return List.of(operationType("SBP_C2B", "SBP C2B", OperationDirection.IN, true));
+        }
+
+        @Override
+        public OperationType createOperationType(CreateOperationTypeCommand command) {
+            lastCreateOperationTypeCommand = command;
+            return new OperationType(OPERATION_TYPE_ID, command.code(), command.name(), command.familyCode(), command.direction(), true, NOW, NOW);
+        }
+
+        @Override
+        public OperationType patchOperationType(UUID id, PatchOperationTypeCommand command) {
+            lastPatchOperationTypeId = id;
+            lastPatchOperationTypeCommand = command;
+            return new OperationType(id, "SBP_C2B", command.name(), command.familyCode(), command.direction(), command.enabled(), NOW, NOW);
+        }
+
+        @Override
+        public List<LimitRule> listRules() {
+            return List.of(rule(RULE_ID, 1, LimitRuleMetric.AMOUNT, LimitRulePeriod.DAY, LimitRuleStatus.DRAFT));
+        }
+
+        @Override
+        public LimitRule createRule(CreateLimitRuleCommand command) {
+            lastCreateLimitRuleCommand = command;
+            return rule(RULE_ID, 1, command.metric(), command.period(), LimitRuleStatus.DRAFT);
+        }
+
+        @Override
+        public LimitRule patchRule(UUID id, PatchLimitRuleCommand command) {
+            lastPatchLimitRuleId = id;
+            lastPatchLimitRuleCommand = command;
+            return rule(id, 1, command.metric(), command.period(), LimitRuleStatus.DRAFT);
+        }
+
+        @Override
+        public LimitRule activateRule(UUID id) {
+            lastActivateRuleId = id;
+            return rule(id, 1, LimitRuleMetric.AMOUNT, LimitRulePeriod.DAY, LimitRuleStatus.ACTIVE);
+        }
+
+        @Override
+        public LimitRule disableRule(UUID id) {
+            lastDisableRuleId = id;
+            return rule(id, 1, LimitRuleMetric.AMOUNT, LimitRulePeriod.DAY, LimitRuleStatus.DISABLED);
+        }
+
+        @Override
+        public LimitRule createNewRuleVersion(UUID id) {
+            lastNewVersionRuleId = id;
+            return rule(UUID.fromString("44444444-4444-4444-4444-444444444444"), 2, LimitRuleMetric.AMOUNT, LimitRulePeriod.DAY, LimitRuleStatus.DRAFT);
+        }
+
         private MerchantGroup group(String code, String name, boolean enabled) {
             return new MerchantGroup(GROUP_ID, TYPE_ID, code, name, "High risk merchants", enabled, NOW, NOW);
         }
@@ -372,6 +617,44 @@ class LimitControllerTest {
                     "alice",
                     validTo == null ? null : NOW,
                     validTo == null ? null : "alice"
+            );
+        }
+
+        private OperationType operationType(String code, String name, OperationDirection direction, boolean enabled) {
+            return new OperationType(OPERATION_TYPE_ID, code, name, "SBP", direction, enabled, NOW, NOW);
+        }
+
+        private LimitRule rule(
+                UUID id,
+                int version,
+                LimitRuleMetric metric,
+                LimitRulePeriod period,
+                LimitRuleStatus status
+        ) {
+            Instant activatedAt = status == LimitRuleStatus.ACTIVE || status == LimitRuleStatus.DISABLED ? NOW : null;
+            Instant disabledAt = status == LimitRuleStatus.DISABLED ? NOW : null;
+            return new LimitRule(
+                    id,
+                    "RULE_SBP_C2B_DAY",
+                    version,
+                    "SBP C2B daily amount",
+                    OPERATION_TYPE_ID,
+                    "SBP_C2B",
+                    OperationDirection.IN,
+                    LimitTargetType.PHONE,
+                    metric,
+                    period,
+                    metric == LimitRuleMetric.AMOUNT ? "RUB" : null,
+                    null,
+                    null,
+                    status,
+                    NOW,
+                    NOW,
+                    activatedAt,
+                    disabledAt,
+                    status == LimitRuleStatus.ACTIVE,
+                    new LimitRuleSelector("TYPE", "SBP_C2B"),
+                    new LimitRuleSelector("NONE", null)
             );
         }
     }

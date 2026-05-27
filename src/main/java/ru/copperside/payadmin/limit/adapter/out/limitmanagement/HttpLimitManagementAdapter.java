@@ -15,14 +15,20 @@ import ru.copperside.payadmin.limit.application.AssignMembershipCommand;
 import ru.copperside.payadmin.limit.application.CloseMembershipCommand;
 import ru.copperside.payadmin.limit.application.CreateGroupCommand;
 import ru.copperside.payadmin.limit.application.CreateGroupTypeCommand;
+import ru.copperside.payadmin.limit.application.CreateLimitRuleCommand;
+import ru.copperside.payadmin.limit.application.CreateOperationTypeCommand;
 import ru.copperside.payadmin.limit.application.MembershipQuery;
 import ru.copperside.payadmin.limit.application.PatchGroupCommand;
 import ru.copperside.payadmin.limit.application.PatchGroupTypeCommand;
+import ru.copperside.payadmin.limit.application.PatchLimitRuleCommand;
+import ru.copperside.payadmin.limit.application.PatchOperationTypeCommand;
 import ru.copperside.payadmin.limit.application.port.out.LimitManagementPort;
 import ru.copperside.payadmin.limit.config.LimitManagementProperties;
+import ru.copperside.payadmin.limit.domain.LimitRule;
 import ru.copperside.payadmin.limit.domain.MerchantGroup;
 import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
+import ru.copperside.payadmin.limit.domain.OperationType;
 
 import java.net.http.HttpClient;
 import java.util.List;
@@ -48,6 +54,18 @@ public class HttpLimitManagementAdapter implements LimitManagementPort {
             new ParameterizedTypeReference<>() {
             };
     private static final ParameterizedTypeReference<LimitManagementApiResponse<LimitManagementMembership>> MEMBERSHIP_TYPE =
+            new ParameterizedTypeReference<>() {
+            };
+    private static final ParameterizedTypeReference<LimitManagementApiResponse<List<LimitManagementOperationType>>> OPERATION_TYPES_TYPE =
+            new ParameterizedTypeReference<>() {
+            };
+    private static final ParameterizedTypeReference<LimitManagementApiResponse<LimitManagementOperationType>> OPERATION_TYPE_TYPE =
+            new ParameterizedTypeReference<>() {
+            };
+    private static final ParameterizedTypeReference<LimitManagementApiResponse<List<LimitManagementRule>>> RULES_TYPE =
+            new ParameterizedTypeReference<>() {
+            };
+    private static final ParameterizedTypeReference<LimitManagementApiResponse<LimitManagementRule>> RULE_TYPE =
             new ParameterizedTypeReference<>() {
             };
 
@@ -209,6 +227,128 @@ public class HttpLimitManagementAdapter implements LimitManagementPort {
                     .headers(this::addHeaders)
                     .retrieve()
                     .body(MEMBERSHIP_TYPE);
+            return response == null || response.data() == null ? null : response.data().toDomain();
+        });
+    }
+
+    @Override
+    public List<OperationType> listOperationTypes() {
+        return call("limit-management operation type list request failed", () -> {
+            LimitManagementApiResponse<List<LimitManagementOperationType>> response = restClient.get()
+                    .uri("/internal/v1/limit-management/operation-types")
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(OPERATION_TYPES_TYPE);
+            if (response == null || response.data() == null) {
+                return List.of();
+            }
+            return response.data().stream().map(LimitManagementOperationType::toDomain).toList();
+        });
+    }
+
+    @Override
+    public OperationType createOperationType(CreateOperationTypeCommand command) {
+        return call("limit-management operation type create request failed", () -> {
+            LimitManagementApiResponse<LimitManagementOperationType> response = restClient.post()
+                    .uri("/internal/v1/limit-management/operation-types")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(command)
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(OPERATION_TYPE_TYPE);
+            return response == null || response.data() == null ? null : response.data().toDomain();
+        });
+    }
+
+    @Override
+    public OperationType patchOperationType(UUID id, PatchOperationTypeCommand command) {
+        return call("limit-management operation type patch request failed", () -> {
+            LimitManagementApiResponse<LimitManagementOperationType> response = restClient.patch()
+                    .uri("/internal/v1/limit-management/operation-types/{typeId}", id)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(command)
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(OPERATION_TYPE_TYPE);
+            return response == null || response.data() == null ? null : response.data().toDomain();
+        });
+    }
+
+    @Override
+    public List<LimitRule> listRules() {
+        return call("limit-management rule list request failed", () -> {
+            LimitManagementApiResponse<List<LimitManagementRule>> response = restClient.get()
+                    .uri("/internal/v1/limit-management/rules")
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(RULES_TYPE);
+            if (response == null || response.data() == null) {
+                return List.of();
+            }
+            return response.data().stream().map(LimitManagementRule::toDomain).toList();
+        });
+    }
+
+    @Override
+    public LimitRule createRule(CreateLimitRuleCommand command) {
+        return call("limit-management rule create request failed", () -> {
+            LimitManagementApiResponse<LimitManagementRule> response = restClient.post()
+                    .uri("/internal/v1/limit-management/rules")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(command)
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(RULE_TYPE);
+            return response == null || response.data() == null ? null : response.data().toDomain();
+        });
+    }
+
+    @Override
+    public LimitRule patchRule(UUID id, PatchLimitRuleCommand command) {
+        return call("limit-management rule patch request failed", () -> {
+            LimitManagementApiResponse<LimitManagementRule> response = restClient.patch()
+                    .uri("/internal/v1/limit-management/rules/{ruleId}", id)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(command)
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(RULE_TYPE);
+            return response == null || response.data() == null ? null : response.data().toDomain();
+        });
+    }
+
+    @Override
+    public LimitRule activateRule(UUID id) {
+        return call("limit-management rule activate request failed", () -> {
+            LimitManagementApiResponse<LimitManagementRule> response = restClient.post()
+                    .uri("/internal/v1/limit-management/rules/{ruleId}/activate", id)
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(RULE_TYPE);
+            return response == null || response.data() == null ? null : response.data().toDomain();
+        });
+    }
+
+    @Override
+    public LimitRule disableRule(UUID id) {
+        return call("limit-management rule disable request failed", () -> {
+            LimitManagementApiResponse<LimitManagementRule> response = restClient.post()
+                    .uri("/internal/v1/limit-management/rules/{ruleId}/disable", id)
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(RULE_TYPE);
+            return response == null || response.data() == null ? null : response.data().toDomain();
+        });
+    }
+
+    @Override
+    public LimitRule createNewRuleVersion(UUID id) {
+        return call("limit-management rule new version request failed", () -> {
+            LimitManagementApiResponse<LimitManagementRule> response = restClient.post()
+                    .uri("/internal/v1/limit-management/rules/{ruleId}/new-version", id)
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(RULE_TYPE);
             return response == null || response.data() == null ? null : response.data().toDomain();
         });
     }
