@@ -54,7 +54,7 @@ class TerminalControllerTest {
                 .andExpect(jsonPath("$.data[0].mps").value("VISA"))
                 .andExpect(jsonPath("$.data[0].is3ds").value(true))
                 .andExpect(jsonPath("$.data[0].hasPassword").value(true))
-                .andExpect(jsonPath("$.data[0].password").value(nullValue()))
+                .andExpect(jsonPath("$.data[0].password").doesNotExist())
                 .andExpect(jsonPath("$.data[0].merchantName").value("Alpha Shop"))
                 .andExpect(jsonPath("$.meta.total").value(4))
                 .andExpect(jsonPath("$.error").value(nullValue()));

@@ -14,14 +14,13 @@ public record TerminalResponse(
         String merchantUrl,
         String login,
         boolean hasPassword,
-        String password,
         String apiUrl,
         String merchantName
 ) {
     static TerminalResponse from(Terminal t) {
         return new TerminalResponse(
                 t.mercId(), t.mps(), t.gate(), t.is3ds(), t.terminalId(), t.merchantId(),
-                t.mcc(), t.name(), t.merchantUrl(), t.login(), t.hasPassword(), null,
+                t.mcc(), t.name(), t.merchantUrl(), t.login(), t.hasPassword(),
                 t.apiUrl(), t.merchantName());
     }
 }
