@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,26 +26,19 @@ class HexagonalArchitectureTest {
     }
 
     @Test
-    void merchantDomainAndApplicationDoNotImportAdaptersOrWebInfrastructure() throws IOException {
-        List<String> forbiddenImports = sourceFiles(MAIN_JAVA.resolve("merchant"))
-                .stream()
-                .filter(path -> path.toString().contains("\\domain\\") || path.toString().contains("\\application\\"))
-                .flatMap(path -> importsFrom(path).stream())
-                .filter(importLine -> importLine.contains(".adapter.")
-                        || importLine.contains(".common.web.")
-                        || importLine.contains(".security.")
-                        || importLine.startsWith("import org.springframework."))
-                .toList();
+    void domainAndApplicationDoNotImportAdaptersOrWebInfrastructure() throws IOException {
+        List<String> forbiddenImports = new ArrayList<>();
+        for (String capability : List.of("merchant", "limit")) {
+            forbiddenImports.addAll(forbiddenBoundaryImports(capability));
+        }
 
         assertThat(forbiddenImports).isEmpty();
     }
 
     @Test
-    void merchantCapabilityHasExpectedHexagonalPortsAndAdapters() {
-        assertThat(Files.isDirectory(MAIN_JAVA.resolve("merchant/domain"))).isTrue();
-        assertThat(Files.isDirectory(MAIN_JAVA.resolve("merchant/application/port/out"))).isTrue();
-        assertThat(Files.isDirectory(MAIN_JAVA.resolve("merchant/adapter/in/web"))).isTrue();
-        assertThat(Files.isDirectory(MAIN_JAVA.resolve("merchant/adapter/out/merchantscore"))).isTrue();
+    void capabilitiesHaveExpectedHexagonalPortsAndAdapters() {
+        assertCapabilityStructure("merchant", "merchantscore");
+        assertCapabilityStructure("limit", "limitmanagement");
     }
 
     private List<Path> sourceFiles(Path root) throws IOException {
@@ -56,6 +50,30 @@ class HexagonalArchitectureTest {
                     .filter(path -> path.toString().endsWith(".java"))
                     .toList();
         }
+    }
+
+    private List<String> forbiddenBoundaryImports(String capability) throws IOException {
+        return sourceFiles(MAIN_JAVA.resolve(capability))
+                .stream()
+                .filter(this::isDomainOrApplicationSource)
+                .flatMap(path -> importsFrom(path).stream())
+                .filter(importLine -> importLine.contains(".adapter.")
+                        || importLine.contains(".common.web.")
+                        || importLine.contains(".security.")
+                        || importLine.startsWith("import org.springframework."))
+                .toList();
+    }
+
+    private boolean isDomainOrApplicationSource(Path path) {
+        String normalized = path.toString().replace('\\', '/');
+        return normalized.contains("/domain/") || normalized.contains("/application/");
+    }
+
+    private void assertCapabilityStructure(String capability, String outboundAdapter) {
+        assertThat(Files.isDirectory(MAIN_JAVA.resolve(capability + "/domain"))).isTrue();
+        assertThat(Files.isDirectory(MAIN_JAVA.resolve(capability + "/application/port/out"))).isTrue();
+        assertThat(Files.isDirectory(MAIN_JAVA.resolve(capability + "/adapter/in/web"))).isTrue();
+        assertThat(Files.isDirectory(MAIN_JAVA.resolve(capability + "/adapter/out/" + outboundAdapter))).isTrue();
     }
 
     private List<String> importsFrom(Path path) {
