@@ -32,6 +32,7 @@ import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
 import ru.copperside.payadmin.limit.domain.OperationDirection;
 import ru.copperside.payadmin.limit.domain.OperationType;
+import ru.copperside.payadmin.limit.domain.RuleManifest;
 import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
 import java.time.Duration;
@@ -49,6 +50,7 @@ class HttpLimitManagementAdapterTest {
     private static final UUID MEMBERSHIP_ID = UUID.fromString("e0395e16-34cc-4cc3-87c0-8d9cc6d17bd2");
     private static final UUID OPERATION_TYPE_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final UUID RULE_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
+    private static final UUID MANIFEST_ID = UUID.fromString("55555555-5555-5555-5555-555555555555");
     private static final Instant NOW = Instant.parse("2026-05-27T09:00:00Z");
 
     private MockWebServer server;
@@ -379,6 +381,40 @@ class HttpLimitManagementAdapterTest {
         assertThat(request.getBody().readUtf8()).isEmpty();
     }
 
+    @Test
+    void compileRuleManifestPostsAndMapsEnvelope() throws Exception {
+        server.enqueue(json(manifestEnvelope()));
+
+        RuleManifest manifest = client().compileRuleManifest();
+
+        assertThat(manifest.id()).isEqualTo(MANIFEST_ID);
+        assertThat(manifest.status()).isEqualTo("VALID");
+        assertThat(manifest.rules()).hasSize(1);
+        assertThat(manifest.rules().getFirst().measure().currency()).isEqualTo("RUB");
+        RecordedRequest request = assertRequest("/internal/v1/limit-management/rule-manifests");
+        assertThat(request.getMethod()).isEqualTo("POST");
+    }
+
+    @Test
+    void getLatestRuleManifestReadsLatestEndpoint() throws Exception {
+        server.enqueue(json(manifestEnvelope()));
+
+        RuleManifest manifest = client().getLatestRuleManifest();
+
+        assertThat(manifest.id()).isEqualTo(MANIFEST_ID);
+        assertRequest("/internal/v1/limit-management/rule-manifests/latest");
+    }
+
+    @Test
+    void getRuleManifestReadsManifestById() throws Exception {
+        server.enqueue(json(manifestEnvelope()));
+
+        RuleManifest manifest = client().getRuleManifest(MANIFEST_ID);
+
+        assertThat(manifest.ruleCount()).isEqualTo(1);
+        assertRequest("/internal/v1/limit-management/rule-manifests/" + MANIFEST_ID);
+    }
+
     private RecordedRequest assertRequest(String path) throws Exception {
         RecordedRequest request = server.takeRequest();
         assertThat(request.getPath()).isEqualTo(path);
@@ -648,5 +684,42 @@ class HttpLimitManagementAdapterTest {
                   "disabledAt": %s
                 }
                 """.formatted(RULE_ID, version, status.name(), enabled, activatedAtJson, disabledAtJson);
+    }
+
+    private String manifestEnvelope() {
+        return """
+                {
+                  "data": {
+                    "id": "%s",
+                    "version": 1,
+                    "status": "VALID",
+                    "checksum": "sha256:test",
+                    "ruleCount": 1,
+                    "createdAt": "%s",
+                    "rules": [
+                      {
+                        "ruleId": "%s",
+                        "code": "RULE_SBP_C2B_DAY",
+                        "version": 1,
+                        "matcher": {
+                          "operation": { "type": "TYPE", "value": "SBP_C2B" },
+                          "direction": "IN",
+                          "attribute": { "type": "NONE", "value": null },
+                          "targetType": "PHONE"
+                        },
+                        "measure": {
+                          "metric": "AMOUNT",
+                          "period": "DAY",
+                          "currency": "RUB"
+                        }
+                      }
+                    ],
+                    "diagnostics": []
+                  },
+                  "meta": null,
+                  "error": null,
+                  "timestamp": "%s"
+                }
+                """.formatted(MANIFEST_ID, NOW, RULE_ID, NOW);
     }
 }

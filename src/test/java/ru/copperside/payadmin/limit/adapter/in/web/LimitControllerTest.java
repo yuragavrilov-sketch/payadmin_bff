@@ -40,6 +40,7 @@ import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
 import ru.copperside.payadmin.limit.domain.OperationDirection;
 import ru.copperside.payadmin.limit.domain.OperationType;
+import ru.copperside.payadmin.limit.domain.RuleManifest;
 import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
 import java.time.Clock;
@@ -70,6 +71,7 @@ class LimitControllerTest {
     private static final UUID MEMBERSHIP_ID = UUID.fromString("49d059b8-93d6-4d89-b681-d7ae68dfc2a1");
     private static final UUID OPERATION_TYPE_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final UUID RULE_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
+    private static final UUID MANIFEST_ID = UUID.fromString("55555555-5555-5555-5555-555555555555");
     private static final Instant NOW = Instant.parse("2026-05-27T09:00:00Z");
 
     @Autowired
@@ -430,6 +432,39 @@ class LimitControllerTest {
         assertThat(limitManagementPort.lastNewVersionRuleId).isEqualTo(RULE_ID);
     }
 
+    @Test
+    void compilesRuleManifest() throws Exception {
+        mockMvc.perform(post("/api/v1/limits/rule-manifests")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(MANIFEST_ID.toString()))
+                .andExpect(jsonPath("$.data.status").value("VALID"))
+                .andExpect(jsonPath("$.data.ruleCount").value(1))
+                .andExpect(jsonPath("$.data.rules[0].code").value("RULE_SBP_C2B_DAY"))
+                .andExpect(jsonPath("$.data.rules[0].measure.currency").value("RUB"));
+
+        assertThat(limitManagementPort.compileManifestCalled).isTrue();
+    }
+
+    @Test
+    void readsLatestRuleManifest() throws Exception {
+        mockMvc.perform(get("/api/v1/limits/rule-manifests/latest")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(MANIFEST_ID.toString()))
+                .andExpect(jsonPath("$.data.checksum").value("sha256:test"));
+    }
+
+    @Test
+    void readsRuleManifestById() throws Exception {
+        mockMvc.perform(get("/api/v1/limits/rule-manifests/{manifestId}", MANIFEST_ID)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(MANIFEST_ID.toString()));
+
+        assertThat(limitManagementPort.lastManifestId).isEqualTo(MANIFEST_ID);
+    }
+
     @TestConfiguration(proxyBeanMethods = false)
     static class TestSupport {
 
@@ -480,6 +515,8 @@ class LimitControllerTest {
         private UUID lastActivateRuleId;
         private UUID lastDisableRuleId;
         private UUID lastNewVersionRuleId;
+        private UUID lastManifestId;
+        private boolean compileManifestCalled;
 
         FakeLimitManagementPort clear() {
             lastListGroupsTypeId = null;
@@ -503,6 +540,8 @@ class LimitControllerTest {
             lastActivateRuleId = null;
             lastDisableRuleId = null;
             lastNewVersionRuleId = null;
+            lastManifestId = null;
+            compileManifestCalled = false;
             return this;
         }
 
@@ -660,6 +699,23 @@ class LimitControllerTest {
             return rule(UUID.fromString("44444444-4444-4444-4444-444444444444"), 2, LimitRuleMetric.AMOUNT, LimitRulePeriod.DAY, LimitRuleStatus.DRAFT);
         }
 
+        @Override
+        public RuleManifest compileRuleManifest() {
+            compileManifestCalled = true;
+            return manifest();
+        }
+
+        @Override
+        public RuleManifest getLatestRuleManifest() {
+            return manifest();
+        }
+
+        @Override
+        public RuleManifest getRuleManifest(UUID id) {
+            lastManifestId = id;
+            return manifest();
+        }
+
         private MerchantGroup group(String code, String name, boolean enabled) {
             return new MerchantGroup(GROUP_ID, TYPE_ID, code, name, "High risk merchants", enabled, NOW, NOW);
         }
@@ -685,6 +741,30 @@ class LimitControllerTest {
 
         private DictionaryItem dictionaryItem(String code) {
             return new DictionaryItem(code, code, true, 10, NOW, NOW);
+        }
+
+        private RuleManifest manifest() {
+            return new RuleManifest(
+                    MANIFEST_ID,
+                    1,
+                    "VALID",
+                    "sha256:test",
+                    1,
+                    NOW,
+                    List.of(new RuleManifest.CompiledRule(
+                            RULE_ID,
+                            "RULE_SBP_C2B_DAY",
+                            1,
+                            new RuleManifest.Matcher(
+                                    new LimitRuleSelector("TYPE", "SBP_C2B"),
+                                    OperationDirection.IN,
+                                    new LimitRuleSelector("NONE", null),
+                                    LimitTargetType.PHONE
+                            ),
+                            new RuleManifest.Measure(LimitRuleMetric.AMOUNT, LimitRulePeriod.DAY, "RUB")
+                    )),
+                    List.of()
+            );
         }
 
         private LimitRule rule(

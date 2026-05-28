@@ -29,6 +29,7 @@ import ru.copperside.payadmin.limit.domain.LimitRuleMetric;
 import ru.copperside.payadmin.limit.domain.LimitRulePeriod;
 import ru.copperside.payadmin.limit.domain.LimitTargetType;
 import ru.copperside.payadmin.limit.domain.OperationDirection;
+import ru.copperside.payadmin.limit.domain.RuleManifest;
 import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
 import java.time.Clock;
@@ -245,6 +246,21 @@ public class LimitController {
     @PostMapping("/rules/{ruleId}/new-version")
     public ApiResponse<LimitRuleResponse> createNewRuleVersion(@PathVariable UUID ruleId) {
         return ApiResponse.success(LimitRuleResponse.from(useCase.createNewRuleVersion(ruleId)), clock);
+    }
+
+    @PostMapping("/rule-manifests")
+    public ApiResponse<RuleManifest> compileRuleManifest() {
+        return ApiResponse.success(useCase.compileRuleManifest(), clock);
+    }
+
+    @GetMapping("/rule-manifests/latest")
+    public ApiResponse<RuleManifest> getLatestRuleManifest() {
+        return ApiResponse.success(useCase.getLatestRuleManifest(), clock);
+    }
+
+    @GetMapping("/rule-manifests/{manifestId}")
+    public ApiResponse<RuleManifest> getRuleManifest(@PathVariable UUID manifestId) {
+        return ApiResponse.success(useCase.getRuleManifest(manifestId), clock);
     }
 
     public record CreateGroupTypeRequest(

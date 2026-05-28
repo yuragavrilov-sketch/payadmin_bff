@@ -6,6 +6,7 @@ import ru.copperside.payadmin.limit.domain.MerchantGroup;
 import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
 import ru.copperside.payadmin.limit.domain.OperationType;
+import ru.copperside.payadmin.limit.domain.RuleManifest;
 import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
 import java.util.List;
@@ -97,5 +98,17 @@ public class LimitManagementUseCase {
 
     public LimitRule createNewRuleVersion(UUID id) {
         return port.createNewRuleVersion(id);
+    }
+
+    public RuleManifest compileRuleManifest() {
+        return port.compileRuleManifest();
+    }
+
+    public RuleManifest getLatestRuleManifest() {
+        return port.getLatestRuleManifest();
+    }
+
+    public RuleManifest getRuleManifest(UUID id) {
+        return port.getRuleManifest(id);
     }
 }

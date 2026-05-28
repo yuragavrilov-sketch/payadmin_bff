@@ -14,6 +14,7 @@ import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
 import ru.copperside.payadmin.limit.domain.OperationDirection;
 import ru.copperside.payadmin.limit.domain.OperationType;
+import ru.copperside.payadmin.limit.domain.RuleManifest;
 import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
 import java.time.Instant;
@@ -247,12 +248,25 @@ class LimitManagementUseCaseTest {
         assertThat(port.capturedNewVersionRuleId).isEqualTo(port.ruleId);
     }
 
+    @Test
+    void delegatesManifestCompilationAndReadsToPort() {
+        RuleManifest compiled = useCase.compileRuleManifest();
+        RuleManifest latest = useCase.getLatestRuleManifest();
+        RuleManifest byId = useCase.getRuleManifest(port.manifestId);
+
+        assertThat(compiled.id()).isEqualTo(port.manifestId);
+        assertThat(latest.version()).isEqualTo(1);
+        assertThat(byId.ruleCount()).isEqualTo(1);
+        assertThat(port.capturedManifestId).isEqualTo(port.manifestId);
+    }
+
     static class FakePort implements LimitManagementPort {
         final UUID typeId = UUID.randomUUID();
         final UUID groupId = UUID.randomUUID();
         final UUID membershipId = UUID.randomUUID();
         final UUID operationTypeId = UUID.randomUUID();
         final UUID ruleId = UUID.randomUUID();
+        final UUID manifestId = UUID.randomUUID();
         UUID capturedTypeId;
         UUID capturedGroupTypeId;
         UUID capturedGroupId;
@@ -263,6 +277,7 @@ class LimitManagementUseCaseTest {
         UUID capturedActivateRuleId;
         UUID capturedDisableRuleId;
         UUID capturedNewVersionRuleId;
+        UUID capturedManifestId;
         MembershipQuery capturedQuery;
         CreateGroupTypeCommand capturedCreateGroupTypeCommand;
         PatchGroupTypeCommand capturedPatchGroupTypeCommand;
@@ -411,8 +426,48 @@ class LimitManagementUseCaseTest {
             return rule(UUID.randomUUID(), 2, LimitRuleMetric.AMOUNT, LimitRulePeriod.DAY, LimitRuleStatus.DRAFT);
         }
 
+        @Override
+        public RuleManifest compileRuleManifest() {
+            return manifest();
+        }
+
+        @Override
+        public RuleManifest getLatestRuleManifest() {
+            return manifest();
+        }
+
+        @Override
+        public RuleManifest getRuleManifest(UUID id) {
+            capturedManifestId = id;
+            return manifest();
+        }
+
         private OperationType operationType(String code, OperationDirection direction, boolean enabled) {
             return new OperationType(operationTypeId, code, code.replace('_', ' '), "SBP", direction, enabled, 10, NOW, NOW);
+        }
+
+        private RuleManifest manifest() {
+            return new RuleManifest(
+                    manifestId,
+                    1,
+                    "VALID",
+                    "sha256:test",
+                    1,
+                    NOW,
+                    List.of(new RuleManifest.CompiledRule(
+                            ruleId,
+                            "RULE_SBP_C2B_DAY",
+                            1,
+                            new RuleManifest.Matcher(
+                                    new LimitRuleSelector("TYPE", "SBP_C2B"),
+                                    OperationDirection.IN,
+                                    new LimitRuleSelector("NONE", null),
+                                    LimitTargetType.PHONE
+                            ),
+                            new RuleManifest.Measure(LimitRuleMetric.AMOUNT, LimitRulePeriod.DAY, "RUB")
+                    )),
+                    List.of()
+            );
         }
 
         private LimitRule rule(

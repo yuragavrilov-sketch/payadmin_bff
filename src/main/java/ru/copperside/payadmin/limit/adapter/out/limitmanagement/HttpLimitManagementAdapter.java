@@ -31,6 +31,7 @@ import ru.copperside.payadmin.limit.domain.MerchantGroup;
 import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
 import ru.copperside.payadmin.limit.domain.OperationType;
+import ru.copperside.payadmin.limit.domain.RuleManifest;
 import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
 import java.net.http.HttpClient;
@@ -72,6 +73,9 @@ public class HttpLimitManagementAdapter implements LimitManagementPort {
             new ParameterizedTypeReference<>() {
             };
     private static final ParameterizedTypeReference<LimitManagementApiResponse<LimitManagementRule>> RULE_TYPE =
+            new ParameterizedTypeReference<>() {
+            };
+    private static final ParameterizedTypeReference<LimitManagementApiResponse<RuleManifest>> RULE_MANIFEST_TYPE =
             new ParameterizedTypeReference<>() {
             };
 
@@ -380,6 +384,42 @@ public class HttpLimitManagementAdapter implements LimitManagementPort {
                     .retrieve()
                     .body(RULE_TYPE);
             return response == null || response.data() == null ? null : response.data().toDomain();
+        });
+    }
+
+    @Override
+    public RuleManifest compileRuleManifest() {
+        return call("limit-management rule manifest compile request failed", () -> {
+            LimitManagementApiResponse<RuleManifest> response = restClient.post()
+                    .uri("/internal/v1/limit-management/rule-manifests")
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(RULE_MANIFEST_TYPE);
+            return response == null ? null : response.data();
+        });
+    }
+
+    @Override
+    public RuleManifest getLatestRuleManifest() {
+        return call("limit-management latest rule manifest request failed", () -> {
+            LimitManagementApiResponse<RuleManifest> response = restClient.get()
+                    .uri("/internal/v1/limit-management/rule-manifests/latest")
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(RULE_MANIFEST_TYPE);
+            return response == null ? null : response.data();
+        });
+    }
+
+    @Override
+    public RuleManifest getRuleManifest(UUID id) {
+        return call("limit-management rule manifest get request failed", () -> {
+            LimitManagementApiResponse<RuleManifest> response = restClient.get()
+                    .uri("/internal/v1/limit-management/rule-manifests/{manifestId}", id)
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(RULE_MANIFEST_TYPE);
+            return response == null ? null : response.data();
         });
     }
 
