@@ -17,9 +17,6 @@ record LimitManagementRule(
         String code,
         int version,
         String name,
-        UUID operationTypeId,
-        String operationTypeCode,
-        String operationTypeDirection,
         String direction,
         LimitManagementSelector operationSelector,
         LimitManagementSelector attributeSelector,
@@ -37,13 +34,6 @@ record LimitManagementRule(
         Instant disabledAt
 ) {
     LimitRule toDomain() {
-        String resolvedOperationTypeCode = operationTypeCode != null
-                ? operationTypeCode
-                : operationSelector == null ? null : operationSelector.value();
-        OperationDirection resolvedDirection = enumValue(
-                OperationDirection.class,
-                operationTypeDirection != null ? operationTypeDirection : direction
-        );
         LimitRuleStatus resolvedStatus = enumValue(LimitRuleStatus.class, status);
         boolean resolvedEnabled = resolvedStatus == LimitRuleStatus.ACTIVE;
         return new LimitRule(
@@ -51,9 +41,9 @@ record LimitManagementRule(
                 code,
                 version,
                 name,
-                operationTypeId,
-                resolvedOperationTypeCode,
-                resolvedDirection,
+                enumValue(OperationDirection.class, direction),
+                selector(operationSelector),
+                selector(attributeSelector),
                 enumValue(LimitTargetType.class, targetType),
                 enumValue(LimitRuleMetric.class, metric),
                 enumValue(LimitRulePeriod.class, period),
@@ -65,20 +55,12 @@ record LimitManagementRule(
                 updatedAt,
                 activatedAt,
                 disabledAt,
-                resolvedEnabled,
-                selector(operationSelector, "TYPE", resolvedOperationTypeCode),
-                selector(attributeSelector, "NONE", null)
+                enabled == null ? resolvedEnabled : enabled
         );
     }
 
-    private static LimitRuleSelector selector(LimitManagementSelector selector, String defaultType, String defaultValue) {
-        if (selector != null) {
-            return new LimitRuleSelector(selector.type(), selector.value());
-        }
-        if (defaultType == null) {
-            return null;
-        }
-        return new LimitRuleSelector(defaultType, defaultValue);
+    private static LimitRuleSelector selector(LimitManagementSelector selector) {
+        return selector == null ? null : new LimitRuleSelector(selector.type(), selector.value());
     }
 
     private static <T extends Enum<T>> T enumValue(Class<T> type, String value) {

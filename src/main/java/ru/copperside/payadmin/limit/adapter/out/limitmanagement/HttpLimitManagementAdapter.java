@@ -31,6 +31,7 @@ import ru.copperside.payadmin.limit.domain.MerchantGroup;
 import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
 import ru.copperside.payadmin.limit.domain.OperationType;
+import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
 import java.net.http.HttpClient;
 import java.util.List;
@@ -62,6 +63,9 @@ public class HttpLimitManagementAdapter implements LimitManagementPort {
             new ParameterizedTypeReference<>() {
             };
     private static final ParameterizedTypeReference<LimitManagementApiResponse<LimitManagementOperationType>> OPERATION_TYPE_TYPE =
+            new ParameterizedTypeReference<>() {
+            };
+    private static final ParameterizedTypeReference<LimitManagementApiResponse<RuleDictionaries>> RULE_DICTIONARIES_TYPE =
             new ParameterizedTypeReference<>() {
             };
     private static final ParameterizedTypeReference<LimitManagementApiResponse<List<LimitManagementRule>>> RULES_TYPE =
@@ -245,6 +249,18 @@ public class HttpLimitManagementAdapter implements LimitManagementPort {
                 return List.of();
             }
             return response.data().stream().map(LimitManagementOperationType::toDomain).toList();
+        });
+    }
+
+    @Override
+    public RuleDictionaries getRuleDictionaries() {
+        return call("limit-management rule dictionaries request failed", () -> {
+            LimitManagementApiResponse<RuleDictionaries> response = restClient.get()
+                    .uri("/internal/v1/limit-management/rule-dictionaries")
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(RULE_DICTIONARIES_TYPE);
+            return response == null ? null : response.data();
         });
     }
 

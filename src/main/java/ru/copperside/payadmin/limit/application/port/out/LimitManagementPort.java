@@ -16,6 +16,7 @@ import ru.copperside.payadmin.limit.domain.MerchantGroup;
 import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
 import ru.copperside.payadmin.limit.domain.OperationType;
+import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
 import java.util.List;
 import java.util.UUID;
@@ -40,6 +41,8 @@ public interface LimitManagementPort {
     MerchantGroupMembership closeMembership(UUID id, CloseMembershipCommand command);
 
     List<OperationType> listOperationTypes();
+
+    RuleDictionaries getRuleDictionaries();
 
     OperationType createOperationType(CreateOperationTypeCommand command);
 

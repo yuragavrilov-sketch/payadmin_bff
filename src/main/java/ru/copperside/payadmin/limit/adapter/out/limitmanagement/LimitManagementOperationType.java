@@ -13,10 +13,11 @@ record LimitManagementOperationType(
         String familyCode,
         OperationDirection direction,
         boolean enabled,
+        int sortOrder,
         Instant createdAt,
         Instant updatedAt
 ) {
     OperationType toDomain() {
-        return new OperationType(id, code, name, familyCode, direction, enabled, createdAt, updatedAt);
+        return new OperationType(id, code, name, familyCode, direction, enabled, sortOrder, createdAt, updatedAt);
     }
 }

@@ -2,6 +2,7 @@ package ru.copperside.payadmin.limit.application;
 
 import org.junit.jupiter.api.Test;
 import ru.copperside.payadmin.limit.application.port.out.LimitManagementPort;
+import ru.copperside.payadmin.limit.domain.DictionaryItem;
 import ru.copperside.payadmin.limit.domain.LimitRule;
 import ru.copperside.payadmin.limit.domain.LimitRuleMetric;
 import ru.copperside.payadmin.limit.domain.LimitRulePeriod;
@@ -13,6 +14,7 @@ import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
 import ru.copperside.payadmin.limit.domain.OperationDirection;
 import ru.copperside.payadmin.limit.domain.OperationType;
+import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
 import java.time.Instant;
 import java.util.List;
@@ -127,6 +129,13 @@ class LimitManagementUseCaseTest {
     }
 
     @Test
+    void delegatesRuleDictionariesToPort() {
+        RuleDictionaries dictionaries = useCase.getRuleDictionaries();
+
+        assertThat(dictionaries.operationFamilies()).extracting(DictionaryItem::code).contains("SBP");
+    }
+
+    @Test
     void delegatesOperationTypeCreationToPort() {
         CreateOperationTypeCommand command = new CreateOperationTypeCommand(
                 "SBP_C2C",
@@ -162,7 +171,7 @@ class LimitManagementUseCaseTest {
         List<LimitRule> rules = useCase.listRules();
 
         assertThat(rules).hasSize(1);
-        assertThat(rules.getFirst().operationTypeCode()).isEqualTo("SBP_C2B");
+        assertThat(rules.getFirst().operationSelector().value()).isEqualTo("SBP_C2B");
     }
 
     @Test
@@ -178,9 +187,13 @@ class LimitManagementUseCaseTest {
         CreateLimitRuleCommand command = new CreateLimitRuleCommand(
                 "RULE_SBP_C2B_DAY",
                 "SBP C2B daily amount",
-                port.operationTypeId,
+                new LimitRuleSelector("TYPE", "SBP_C2B"),
+                OperationDirection.IN,
+                new LimitRuleSelector("NONE", null),
+                LimitTargetType.PHONE,
                 LimitRuleMetric.AMOUNT,
-                LimitRulePeriod.DAY
+                LimitRulePeriod.DAY,
+                "RUB"
         );
 
         LimitRule rule = useCase.createRule(command);
@@ -193,9 +206,13 @@ class LimitManagementUseCaseTest {
     void delegatesRulePatchToPort() {
         PatchLimitRuleCommand command = new PatchLimitRuleCommand(
                 "SBP C2B weekly count",
-                port.operationTypeId,
+                new LimitRuleSelector("TYPE", "SBP_C2B"),
+                OperationDirection.IN,
+                new LimitRuleSelector("NONE", null),
+                LimitTargetType.PHONE,
                 LimitRuleMetric.COUNT,
-                LimitRulePeriod.WEEK
+                LimitRulePeriod.WEEK,
+                null
         );
 
         LimitRule rule = useCase.patchRule(port.ruleId, command);
@@ -320,16 +337,36 @@ class LimitManagementUseCaseTest {
         }
 
         @Override
+        public RuleDictionaries getRuleDictionaries() {
+            return new RuleDictionaries(
+                    List.of(new DictionaryItem("SBP", "SBP", true, 10, NOW, NOW)),
+                    listOperationTypes(),
+                    List.of(new DictionaryItem("MIR", "MIR", true, 10, NOW, NOW)),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of("IN", "OUT", "ALL"),
+                    List.of("ANY", "FAMILY", "TYPE"),
+                    List.of("NONE", "PAYMENT_SYSTEM"),
+                    List.of("ANY", "CARD", "PHONE"),
+                    List.of("AMOUNT", "COUNT"),
+                    List.of("DAY", "WEEK", "MONTH")
+            );
+        }
+
+        @Override
         public OperationType createOperationType(CreateOperationTypeCommand command) {
             capturedCreateOperationTypeCommand = command;
-            return new OperationType(operationTypeId, command.code(), command.name(), command.familyCode(), command.direction(), true, NOW, NOW);
+            return new OperationType(operationTypeId, command.code(), command.name(), command.familyCode(), command.direction(), true, 10, NOW, NOW);
         }
 
         @Override
         public OperationType patchOperationType(UUID id, PatchOperationTypeCommand command) {
             capturedOperationTypeId = id;
             capturedPatchOperationTypeCommand = command;
-            return new OperationType(id, "SBP_C2B", command.name(), command.familyCode(), command.direction(), command.enabled(), NOW, NOW);
+            return new OperationType(id, "SBP_C2B", command.name(), command.familyCode(), command.direction(), command.enabled(), 10, NOW, NOW);
         }
 
         @Override
@@ -375,7 +412,7 @@ class LimitManagementUseCaseTest {
         }
 
         private OperationType operationType(String code, OperationDirection direction, boolean enabled) {
-            return new OperationType(operationTypeId, code, code.replace('_', ' '), "SBP", direction, enabled, NOW, NOW);
+            return new OperationType(operationTypeId, code, code.replace('_', ' '), "SBP", direction, enabled, 10, NOW, NOW);
         }
 
         private LimitRule rule(
@@ -392,9 +429,9 @@ class LimitManagementUseCaseTest {
                     "RULE_SBP_C2B_DAY",
                     version,
                     "SBP C2B daily amount",
-                    operationTypeId,
-                    "SBP_C2B",
                     OperationDirection.IN,
+                    new LimitRuleSelector("TYPE", "SBP_C2B"),
+                    new LimitRuleSelector("NONE", null),
                     LimitTargetType.PHONE,
                     metric,
                     period,
@@ -406,9 +443,7 @@ class LimitManagementUseCaseTest {
                     NOW,
                     activatedAt,
                     disabledAt,
-                    status == LimitRuleStatus.ACTIVE,
-                    new LimitRuleSelector("TYPE", "SBP_C2B"),
-                    new LimitRuleSelector("NONE", null)
+                    status == LimitRuleStatus.ACTIVE
             );
         }
     }

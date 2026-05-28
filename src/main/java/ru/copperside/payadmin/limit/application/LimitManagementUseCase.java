@@ -6,6 +6,7 @@ import ru.copperside.payadmin.limit.domain.MerchantGroup;
 import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
 import ru.copperside.payadmin.limit.domain.OperationType;
+import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
 import java.util.List;
 import java.util.UUID;
@@ -56,6 +57,10 @@ public class LimitManagementUseCase {
 
     public List<OperationType> listOperationTypes() {
         return port.listOperationTypes();
+    }
+
+    public RuleDictionaries getRuleDictionaries() {
+        return port.getRuleDictionaries();
     }
 
     public OperationType createOperationType(CreateOperationTypeCommand command) {

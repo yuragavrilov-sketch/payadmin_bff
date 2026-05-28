@@ -24,9 +24,12 @@ import ru.copperside.payadmin.limit.application.PatchGroupCommand;
 import ru.copperside.payadmin.limit.application.PatchGroupTypeCommand;
 import ru.copperside.payadmin.limit.application.PatchLimitRuleCommand;
 import ru.copperside.payadmin.limit.application.PatchOperationTypeCommand;
+import ru.copperside.payadmin.limit.domain.LimitRuleSelector;
 import ru.copperside.payadmin.limit.domain.LimitRuleMetric;
 import ru.copperside.payadmin.limit.domain.LimitRulePeriod;
+import ru.copperside.payadmin.limit.domain.LimitTargetType;
 import ru.copperside.payadmin.limit.domain.OperationDirection;
+import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -152,6 +155,11 @@ public class LimitController {
         return ApiResponse.success(data, clock);
     }
 
+    @GetMapping("/rule-dictionaries")
+    public ApiResponse<RuleDictionaries> getRuleDictionaries() {
+        return ApiResponse.success(useCase.getRuleDictionaries(), clock);
+    }
+
     @PostMapping("/operation-types")
     public ApiResponse<OperationTypeResponse> createOperationType(@Valid @RequestBody CreateOperationTypeRequest request) {
         var type = useCase.createOperationType(new CreateOperationTypeCommand(
@@ -195,9 +203,13 @@ public class LimitController {
         var rule = useCase.createRule(new CreateLimitRuleCommand(
                 request.code(),
                 request.name(),
-                request.operationTypeId(),
+                request.operationSelector(),
+                request.direction(),
+                request.attributeSelector(),
+                request.targetType(),
                 request.metric(),
-                request.period()
+                request.period(),
+                request.currency()
         ));
         return ApiResponse.success(LimitRuleResponse.from(rule), clock);
     }
@@ -209,9 +221,13 @@ public class LimitController {
     ) {
         var rule = useCase.patchRule(ruleId, new PatchLimitRuleCommand(
                 request.name(),
-                request.operationTypeId(),
+                request.operationSelector(),
+                request.direction(),
+                request.attributeSelector(),
+                request.targetType(),
                 request.metric(),
-                request.period()
+                request.period(),
+                request.currency()
         ));
         return ApiResponse.success(LimitRuleResponse.from(rule), clock);
     }
@@ -277,17 +293,25 @@ public class LimitController {
     public record CreateRuleRequest(
             @NotBlank String code,
             @NotBlank String name,
-            @NotNull UUID operationTypeId,
+            @NotNull LimitRuleSelector operationSelector,
+            @NotNull OperationDirection direction,
+            @NotNull LimitRuleSelector attributeSelector,
+            @NotNull LimitTargetType targetType,
             @NotNull LimitRuleMetric metric,
-            @NotNull LimitRulePeriod period
+            @NotNull LimitRulePeriod period,
+            String currency
     ) {
     }
 
     public record PatchRuleRequest(
             String name,
-            UUID operationTypeId,
+            LimitRuleSelector operationSelector,
+            OperationDirection direction,
+            LimitRuleSelector attributeSelector,
+            LimitTargetType targetType,
             LimitRuleMetric metric,
-            LimitRulePeriod period
+            LimitRulePeriod period,
+            String currency
     ) {
     }
 }

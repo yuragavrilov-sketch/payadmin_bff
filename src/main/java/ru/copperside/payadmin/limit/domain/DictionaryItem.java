@@ -1,14 +1,10 @@
 package ru.copperside.payadmin.limit.domain;
 
 import java.time.Instant;
-import java.util.UUID;
 
-public record OperationType(
-        UUID id,
+public record DictionaryItem(
         String code,
         String name,
-        String familyCode,
-        OperationDirection direction,
         boolean enabled,
         int sortOrder,
         Instant createdAt,

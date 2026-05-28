@@ -24,12 +24,15 @@ import ru.copperside.payadmin.limit.config.LimitManagementProperties;
 import ru.copperside.payadmin.limit.domain.LimitRule;
 import ru.copperside.payadmin.limit.domain.LimitRuleMetric;
 import ru.copperside.payadmin.limit.domain.LimitRulePeriod;
+import ru.copperside.payadmin.limit.domain.LimitRuleSelector;
 import ru.copperside.payadmin.limit.domain.LimitRuleStatus;
+import ru.copperside.payadmin.limit.domain.LimitTargetType;
 import ru.copperside.payadmin.limit.domain.MerchantGroup;
 import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
 import ru.copperside.payadmin.limit.domain.OperationDirection;
 import ru.copperside.payadmin.limit.domain.OperationType;
+import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -184,8 +187,19 @@ class HttpLimitManagementAdapterTest {
         List<OperationType> types = client().listOperationTypes();
 
         assertThat(types).containsExactly(new OperationType(
-                OPERATION_TYPE_ID, "SBP_C2B", "SBP C2B", "SBP", OperationDirection.IN, true, NOW, NOW));
+                OPERATION_TYPE_ID, "SBP_C2B", "SBP C2B", "SBP", OperationDirection.IN, true, 10, NOW, NOW));
         assertRequest("/internal/v1/limit-management/operation-types");
+    }
+
+    @Test
+    void getRuleDictionariesMapsEnvelope() throws Exception {
+        server.enqueue(json(ruleDictionariesEnvelope()));
+
+        RuleDictionaries dictionaries = client().getRuleDictionaries();
+
+        assertThat(dictionaries.operationFamilies().getFirst().code()).isEqualTo("SBP");
+        assertThat(dictionaries.operationSelectorTypes()).contains("ANY", "FAMILY", "TYPE");
+        assertRequest("/internal/v1/limit-management/rule-dictionaries");
     }
 
     @Test
@@ -230,8 +244,8 @@ class HttpLimitManagementAdapterTest {
 
         assertThat(rules).hasSize(1);
         LimitRule rule = rules.getFirst();
-        assertThat(rule.operationTypeCode()).isEqualTo("SBP_C2B");
-        assertThat(rule.operationTypeDirection()).isEqualTo(OperationDirection.IN);
+        assertThat(rule.operationSelector()).isEqualTo(new LimitRuleSelector("TYPE", "SBP_C2B"));
+        assertThat(rule.direction()).isEqualTo(OperationDirection.IN);
         assertThat(rule.metric()).isEqualTo(LimitRuleMetric.AMOUNT);
         assertThat(rule.period()).isEqualTo(LimitRulePeriod.DAY);
         assertThat(rule.enabled()).isFalse();
@@ -256,9 +270,13 @@ class HttpLimitManagementAdapterTest {
         LimitRule rule = client().createRule(new CreateLimitRuleCommand(
                 "RULE_SBP_C2B_DAY",
                 "SBP C2B daily amount",
-                OPERATION_TYPE_ID,
+                new LimitRuleSelector("TYPE", "SBP_C2B"),
+                OperationDirection.IN,
+                new LimitRuleSelector("NONE", null),
+                LimitTargetType.PHONE,
                 LimitRuleMetric.AMOUNT,
-                LimitRulePeriod.DAY
+                LimitRulePeriod.DAY,
+                "RUB"
         ));
 
         assertThat(rule.status()).isEqualTo(LimitRuleStatus.DRAFT);
@@ -266,7 +284,8 @@ class HttpLimitManagementAdapterTest {
         assertThat(request.getMethod()).isEqualTo("POST");
         assertThat(request.getBody().readUtf8())
                 .contains("\"code\":\"RULE_SBP_C2B_DAY\"")
-                .contains("\"operationTypeId\":\"" + OPERATION_TYPE_ID + "\"")
+                .contains("\"operationSelector\":{\"type\":\"TYPE\",\"value\":\"SBP_C2B\"}")
+                .contains("\"direction\":\"IN\"")
                 .contains("\"metric\":\"AMOUNT\"")
                 .contains("\"period\":\"DAY\"");
     }
@@ -277,9 +296,13 @@ class HttpLimitManagementAdapterTest {
 
         LimitRule rule = client().patchRule(RULE_ID, new PatchLimitRuleCommand(
                 "SBP C2B weekly count",
-                OPERATION_TYPE_ID,
+                new LimitRuleSelector("TYPE", "SBP_C2B"),
+                OperationDirection.IN,
+                new LimitRuleSelector("NONE", null),
+                LimitTargetType.PHONE,
                 LimitRuleMetric.COUNT,
-                LimitRulePeriod.WEEK
+                LimitRulePeriod.WEEK,
+                null
         ));
 
         assertThat(rule.id()).isEqualTo(RULE_ID);
@@ -528,10 +551,46 @@ class HttpLimitManagementAdapterTest {
                   "familyCode": "SBP",
                   "direction": "IN",
                   "enabled": %s,
+                  "sortOrder": 10,
                   "createdAt": "2026-05-27T09:00:00Z",
                   "updatedAt": "2026-05-27T09:00:00Z"
                 }
                 """.formatted(OPERATION_TYPE_ID, enabled);
+    }
+
+    private String ruleDictionariesEnvelope() {
+        return """
+                {
+                  "data": {
+                    "operationFamilies": [
+                      {
+                        "code": "SBP",
+                        "name": "SBP",
+                        "enabled": true,
+                        "sortOrder": 10,
+                        "createdAt": "2026-05-27T09:00:00Z",
+                        "updatedAt": "2026-05-27T09:00:00Z"
+                      }
+                    ],
+                    "operationTypes": [%s],
+                    "paymentSystems": [],
+                    "issuerCountries": [],
+                    "issuerBanks": [],
+                    "bins": [],
+                    "cardTypes": [],
+                    "cardLevels": [],
+                    "directions": ["IN", "OUT", "ALL"],
+                    "operationSelectorTypes": ["ANY", "FAMILY", "TYPE"],
+                    "attributeSelectorTypes": ["NONE", "PAYMENT_SYSTEM"],
+                    "targetTypes": ["ANY", "CARD", "PHONE"],
+                    "metrics": ["AMOUNT", "COUNT"],
+                    "periods": ["DAY", "WEEK", "MONTH"]
+                  },
+                  "meta": null,
+                  "error": null,
+                  "timestamp": "2026-05-27T09:00:00Z"
+                }
+                """.formatted(operationTypeJson(true));
     }
 
     private String rulesEnvelope(LimitRuleStatus status, int version) {

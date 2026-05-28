@@ -1,14 +1,19 @@
 package ru.copperside.payadmin.limit.application;
 
+import ru.copperside.payadmin.limit.domain.LimitRuleSelector;
+import ru.copperside.payadmin.limit.domain.LimitTargetType;
 import ru.copperside.payadmin.limit.domain.LimitRuleMetric;
 import ru.copperside.payadmin.limit.domain.LimitRulePeriod;
-
-import java.util.UUID;
+import ru.copperside.payadmin.limit.domain.OperationDirection;
 
 public record PatchLimitRuleCommand(
         String name,
-        UUID operationTypeId,
+        LimitRuleSelector operationSelector,
+        OperationDirection direction,
+        LimitRuleSelector attributeSelector,
+        LimitTargetType targetType,
         LimitRuleMetric metric,
-        LimitRulePeriod period
+        LimitRulePeriod period,
+        String currency
 ) {
 }

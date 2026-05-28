@@ -12,9 +12,6 @@ public record LimitRuleResponse(
         String code,
         int version,
         String name,
-        UUID operationTypeId,
-        String operationTypeCode,
-        String operationTypeDirection,
         String direction,
         Selector operationSelector,
         Selector attributeSelector,
@@ -32,26 +29,15 @@ public record LimitRuleResponse(
         Instant disabledAt
 ) {
     static LimitRuleResponse from(LimitRule rule) {
-        String operationTypeCode = rule.operationTypeCode();
         Selector operationSelector = selector(rule.operationSelector());
-        if (operationSelector == null && operationTypeCode != null) {
-            operationSelector = new Selector("TYPE", operationTypeCode);
-        }
         Selector attributeSelector = selector(rule.attributeSelector());
-        if (attributeSelector == null) {
-            attributeSelector = new Selector("NONE", null);
-        }
-        String direction = rule.operationTypeDirection() == null ? null : rule.operationTypeDirection().name();
         boolean enabled = rule.status() != null && "ACTIVE".equals(rule.status().name());
         return new LimitRuleResponse(
                 rule.id(),
                 rule.code(),
                 rule.version(),
                 rule.name(),
-                rule.operationTypeId(),
-                operationTypeCode,
-                direction,
-                direction,
+                rule.direction() == null ? null : rule.direction().name(),
                 operationSelector,
                 attributeSelector,
                 rule.targetType() == null ? null : rule.targetType().name(),

@@ -28,6 +28,7 @@ import ru.copperside.payadmin.limit.application.PatchGroupTypeCommand;
 import ru.copperside.payadmin.limit.application.PatchLimitRuleCommand;
 import ru.copperside.payadmin.limit.application.PatchOperationTypeCommand;
 import ru.copperside.payadmin.limit.application.port.out.LimitManagementPort;
+import ru.copperside.payadmin.limit.domain.DictionaryItem;
 import ru.copperside.payadmin.limit.domain.LimitRule;
 import ru.copperside.payadmin.limit.domain.LimitRuleMetric;
 import ru.copperside.payadmin.limit.domain.LimitRulePeriod;
@@ -39,6 +40,7 @@ import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
 import ru.copperside.payadmin.limit.domain.OperationDirection;
 import ru.copperside.payadmin.limit.domain.OperationType;
+import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -297,11 +299,20 @@ class LimitControllerTest {
         mockMvc.perform(get("/api/v1/limits/rules")
                         .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].operationTypeCode").value("SBP_C2B"))
-                .andExpect(jsonPath("$.data[0].operationTypeDirection").value("IN"))
+                .andExpect(jsonPath("$.data[0].direction").value("IN"))
                 .andExpect(jsonPath("$.data[0].targetType").value("PHONE"))
                 .andExpect(jsonPath("$.data[0].status").value("DRAFT"))
                 .andExpect(jsonPath("$.data[0].operationSelector.value").value("SBP_C2B"));
+    }
+
+    @Test
+    void returnsRuleDictionaries() throws Exception {
+        mockMvc.perform(get("/api/v1/limits/rule-dictionaries")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.operationFamilies[0].code").value("SBP"))
+                .andExpect(jsonPath("$.data.operationTypes[0].code").value("SBP_C2B"))
+                .andExpect(jsonPath("$.data.operationSelectorTypes[0]").value("ANY"));
     }
 
     @Test
@@ -323,11 +334,15 @@ class LimitControllerTest {
                                 {
                                   "code": "RULE_SBP_C2B_DAY",
                                   "name": "SBP C2B daily amount",
-                                  "operationTypeId": "%s",
+                                  "operationSelector": { "type": "TYPE", "value": "SBP_C2B" },
+                                  "direction": "IN",
+                                  "attributeSelector": { "type": "NONE", "value": null },
+                                  "targetType": "PHONE",
                                   "metric": "AMOUNT",
-                                  "period": "DAY"
+                                  "period": "DAY",
+                                  "currency": "RUB"
                                 }
-                                """.formatted(OPERATION_TYPE_ID))
+                                """)
                         .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.code").value("RULE_SBP_C2B_DAY"))
@@ -337,9 +352,13 @@ class LimitControllerTest {
                 .isEqualTo(new CreateLimitRuleCommand(
                         "RULE_SBP_C2B_DAY",
                         "SBP C2B daily amount",
-                        OPERATION_TYPE_ID,
+                        new LimitRuleSelector("TYPE", "SBP_C2B"),
+                        OperationDirection.IN,
+                        new LimitRuleSelector("NONE", null),
+                        LimitTargetType.PHONE,
                         LimitRuleMetric.AMOUNT,
-                        LimitRulePeriod.DAY
+                        LimitRulePeriod.DAY,
+                        "RUB"
                 ));
     }
 
@@ -350,11 +369,15 @@ class LimitControllerTest {
                         .content("""
                                 {
                                   "name": "SBP C2B weekly count",
-                                  "operationTypeId": "%s",
+                                  "operationSelector": { "type": "TYPE", "value": "SBP_C2B" },
+                                  "direction": "IN",
+                                  "attributeSelector": { "type": "NONE", "value": null },
+                                  "targetType": "PHONE",
                                   "metric": "COUNT",
-                                  "period": "WEEK"
+                                  "period": "WEEK",
+                                  "currency": null
                                 }
-                                """.formatted(OPERATION_TYPE_ID))
+                                """)
                         .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.metric").value("COUNT"))
@@ -364,9 +387,13 @@ class LimitControllerTest {
         assertThat(limitManagementPort.lastPatchLimitRuleCommand)
                 .isEqualTo(new PatchLimitRuleCommand(
                         "SBP C2B weekly count",
-                        OPERATION_TYPE_ID,
+                        new LimitRuleSelector("TYPE", "SBP_C2B"),
+                        OperationDirection.IN,
+                        new LimitRuleSelector("NONE", null),
+                        LimitTargetType.PHONE,
                         LimitRuleMetric.COUNT,
-                        LimitRulePeriod.WEEK
+                        LimitRulePeriod.WEEK,
+                        null
                 ));
     }
 
@@ -559,16 +586,36 @@ class LimitControllerTest {
         }
 
         @Override
+        public RuleDictionaries getRuleDictionaries() {
+            return new RuleDictionaries(
+                    List.of(dictionaryItem("SBP")),
+                    listOperationTypes(),
+                    List.of(dictionaryItem("MIR")),
+                    List.of(dictionaryItem("RU")),
+                    List.of(dictionaryItem("TKB")),
+                    List.of(dictionaryItem("220220")),
+                    List.of(dictionaryItem("DEBIT")),
+                    List.of(dictionaryItem("STANDARD")),
+                    List.of("IN", "OUT", "ALL"),
+                    List.of("ANY", "FAMILY", "TYPE"),
+                    List.of("NONE", "PAYMENT_SYSTEM"),
+                    List.of("ANY", "CARD", "PHONE"),
+                    List.of("AMOUNT", "COUNT"),
+                    List.of("DAY", "WEEK", "MONTH")
+            );
+        }
+
+        @Override
         public OperationType createOperationType(CreateOperationTypeCommand command) {
             lastCreateOperationTypeCommand = command;
-            return new OperationType(OPERATION_TYPE_ID, command.code(), command.name(), command.familyCode(), command.direction(), true, NOW, NOW);
+            return new OperationType(OPERATION_TYPE_ID, command.code(), command.name(), command.familyCode(), command.direction(), true, 10, NOW, NOW);
         }
 
         @Override
         public OperationType patchOperationType(UUID id, PatchOperationTypeCommand command) {
             lastPatchOperationTypeId = id;
             lastPatchOperationTypeCommand = command;
-            return new OperationType(id, "SBP_C2B", command.name(), command.familyCode(), command.direction(), command.enabled(), NOW, NOW);
+            return new OperationType(id, "SBP_C2B", command.name(), command.familyCode(), command.direction(), command.enabled(), 10, NOW, NOW);
         }
 
         @Override
@@ -633,7 +680,11 @@ class LimitControllerTest {
         }
 
         private OperationType operationType(String code, String name, OperationDirection direction, boolean enabled) {
-            return new OperationType(OPERATION_TYPE_ID, code, name, "SBP", direction, enabled, NOW, NOW);
+            return new OperationType(OPERATION_TYPE_ID, code, name, "SBP", direction, enabled, 10, NOW, NOW);
+        }
+
+        private DictionaryItem dictionaryItem(String code) {
+            return new DictionaryItem(code, code, true, 10, NOW, NOW);
         }
 
         private LimitRule rule(
@@ -650,9 +701,9 @@ class LimitControllerTest {
                     "RULE_SBP_C2B_DAY",
                     version,
                     "SBP C2B daily amount",
-                    OPERATION_TYPE_ID,
-                    "SBP_C2B",
                     OperationDirection.IN,
+                    new LimitRuleSelector("TYPE", "SBP_C2B"),
+                    new LimitRuleSelector("NONE", null),
                     LimitTargetType.PHONE,
                     metric,
                     period,
@@ -664,9 +715,7 @@ class LimitControllerTest {
                     NOW,
                     activatedAt,
                     disabledAt,
-                    status == LimitRuleStatus.ACTIVE,
-                    new LimitRuleSelector("TYPE", "SBP_C2B"),
-                    new LimitRuleSelector("NONE", null)
+                    status == LimitRuleStatus.ACTIVE
             );
         }
     }

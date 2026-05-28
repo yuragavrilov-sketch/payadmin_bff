@@ -9,9 +9,9 @@ public record LimitRule(
         String code,
         int version,
         String name,
-        UUID operationTypeId,
-        String operationTypeCode,
-        OperationDirection operationTypeDirection,
+        OperationDirection direction,
+        LimitRuleSelector operationSelector,
+        LimitRuleSelector attributeSelector,
         LimitTargetType targetType,
         LimitRuleMetric metric,
         LimitRulePeriod period,
@@ -23,8 +23,6 @@ public record LimitRule(
         Instant updatedAt,
         Instant activatedAt,
         Instant disabledAt,
-        boolean enabled,
-        LimitRuleSelector operationSelector,
-        LimitRuleSelector attributeSelector
+        boolean enabled
 ) {
 }
