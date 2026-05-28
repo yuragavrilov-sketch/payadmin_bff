@@ -7,11 +7,22 @@ The service adapts `merchants-core` responses to the fixed SPA contract in
 
 ## API
 
-Implemented endpoint:
+Implemented browser-facing endpoints:
 
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/api/v1/merchants` | Merchant list for the admin SPA. |
+| `GET` | `/api/v1/limits/operation-types` | Operation type catalog for limit administration. |
+| `GET` | `/api/v1/limits/rule-dictionaries` | Selector dictionaries for rule forms. |
+| `GET` | `/api/v1/limits/rules` | List limit rules. |
+| `POST` | `/api/v1/limits/rules` | Create a draft rule. |
+| `PATCH` | `/api/v1/limits/rules/{ruleId}` | Patch a draft rule. |
+| `POST` | `/api/v1/limits/rules/{ruleId}/activate` | Activate a draft rule. |
+| `POST` | `/api/v1/limits/rules/{ruleId}/disable` | Disable an active rule. |
+| `POST` | `/api/v1/limits/rules/{ruleId}/new-version` | Create a new draft rule version. |
+| `POST` | `/api/v1/limits/rule-manifests` | Compile active rules into the latest valid manifest. |
+| `GET` | `/api/v1/limits/rule-manifests/latest` | Read the latest valid manifest. |
+| `GET` | `/api/v1/limits/rule-manifests/{manifestId}` | Read a manifest by ID. |
 
 The response uses the shared envelope:
 
