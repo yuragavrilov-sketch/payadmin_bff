@@ -152,6 +152,25 @@ http://localhost:8083/v3/api-docs
 http://localhost:8083/swagger-ui.html
 ```
 
+## Docker Compose Run
+
+The full local contour is owned by `../infra/docker-compose.yaml`.
+
+```powershell
+cd ..\infra
+docker compose up -d --build payadmin-bff
+```
+
+The container uses `SPRING_PROFILES_ACTIVE=compose`, Config Server label
+`compose`, and Vault secret
+`pay/compose/payadmin-bff-merchants-core-internal-admin-key`.
+
+For browser token compatibility, the compose config keeps the issuer as
+`http://localhost:8080/realms/payadmin` and sets the JWKS URI to
+`http://keycloak:8080/realms/payadmin/protocol/openid-connect/certs`.
+Browser bearer tokens are still validated inbound and are not forwarded to
+internal services.
+
 ## Tests
 
 ```powershell
