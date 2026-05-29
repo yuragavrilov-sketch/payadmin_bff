@@ -6,11 +6,18 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+import ru.copperside.payadmin.sbp.application.config.SbpConfigUseCase;
+import ru.copperside.payadmin.sbp.application.config.port.out.SbpConfigPort;
 
 import java.net.http.HttpClient;
 
 @Configuration(proxyBeanMethods = false)
 public class SbpUseCaseConfig {
+
+    @Bean
+    SbpConfigUseCase sbpConfigUseCase(SbpConfigPort port) {
+        return new SbpConfigUseCase(port);
+    }
 
     @Bean
     RestClient sbpRestClient(SbpRouterManagementProperties properties) {
