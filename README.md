@@ -23,6 +23,8 @@ Implemented browser-facing endpoints:
 | `POST` | `/api/v1/limits/rule-manifests` | Compile active rules into the latest valid manifest. |
 | `GET` | `/api/v1/limits/rule-manifests/latest` | Read the latest valid manifest. |
 | `GET` | `/api/v1/limits/rule-manifests/{manifestId}` | Read a manifest by ID. |
+| `DELETE` | `/api/v1/sbp/upstreams/{id}` | Mark an SBP upstream for removal (pass-through to `sbp-router-management`). |
+| `DELETE` | `/api/v1/sbp/extraction-rules/{id}` | Mark an SBP extraction rule for removal (pass-through to `sbp-router-management`). |
 
 The response uses the shared envelope:
 
