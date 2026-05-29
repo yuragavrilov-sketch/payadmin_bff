@@ -74,6 +74,23 @@ class HttpSbpConfigAdapterTest {
     }
 
     @Test
+    void removeUpstreamSendsDeleteAndReturnsData() {
+        server.expect(requestTo("http://sbp-mgmt:8087/internal/v1/sbp-router-management/upstreams/11111111-1111-1111-1111-111111111111"))
+                .andExpect(method(HttpMethod.DELETE))
+                .andExpect(header("X-Internal-Admin-Key", "secret-key"))
+                .andRespond(withSuccess("""
+                        {"data":{"id":"11111111-1111-1111-1111-111111111111","name":"infosrv","url":"http://u",
+                        "timeoutMs":null,"retryMaxAttempts":null,"retryBackoffMs":null,"status":"DRAFT","removal":true,
+                        "version":1,"updatedAt":"2026-05-29T09:00:00Z"},"meta":{},"error":null,
+                        "timestamp":"2026-05-29T09:00:00Z"}""", MediaType.APPLICATION_JSON));
+
+        Upstream removed = adapter.removeUpstream(java.util.UUID.fromString("11111111-1111-1111-1111-111111111111"));
+
+        assertThat(removed.removal()).isTrue();
+        server.verify();
+    }
+
+    @Test
     void upstreamProblemIsMappedToUpstreamProblemException() {
         server.expect(requestTo("http://sbp-mgmt:8087/internal/v1/sbp-router-management/routing-manifests"))
                 .andExpect(method(HttpMethod.POST))

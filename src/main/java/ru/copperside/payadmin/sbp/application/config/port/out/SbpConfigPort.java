@@ -20,10 +20,12 @@ public interface SbpConfigPort {
     List<Upstream> listUpstreams();
     Upstream createUpstream(UpstreamRequest request);
     Upstream patchUpstream(UUID id, UpstreamRequest request);
+    Upstream removeUpstream(UUID id);
 
     List<ExtractionRule> listExtractionRules();
     ExtractionRule createExtractionRule(ExtractionRuleRequest request);
     ExtractionRule patchExtractionRule(UUID id, ExtractionRuleRequest request);
+    ExtractionRule removeExtractionRule(UUID id);
 
     TerminalConfig getTerminalConfig();
     TerminalConfig putTerminalConfig(TerminalConfigRequest request);

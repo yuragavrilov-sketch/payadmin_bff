@@ -41,6 +41,7 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -87,6 +88,22 @@ class SbpConfigControllerTest {
                         .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("DRAFT"));
+    }
+
+    @Test
+    void removeUpstreamMarksRemoval() throws Exception {
+        mockMvc.perform(delete("/api/v1/sbp/upstreams/" + UPSTREAM_ID)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.removal").value(true));
+    }
+
+    @Test
+    void removeExtractionRuleMarksRemoval() throws Exception {
+        mockMvc.perform(delete("/api/v1/sbp/extraction-rules/" + UPSTREAM_ID)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.removal").value(true));
     }
 
     @Test
@@ -145,6 +162,11 @@ class SbpConfigControllerTest {
         }
 
         @Override
+        public Upstream removeUpstream(UUID id) {
+            return new Upstream(id, "infosrv", "http://u", null, null, null, "REMOVED", true, 2, NOW);
+        }
+
+        @Override
         public List<ExtractionRule> listExtractionRules() {
             return List.of();
         }
@@ -157,6 +179,11 @@ class SbpConfigControllerTest {
         @Override
         public ExtractionRule patchExtractionRule(UUID id, ExtractionRuleRequest request) {
             return new ExtractionRule(id, "ReqAuthPay", List.of(), List.of(), "DRAFT", false, 2);
+        }
+
+        @Override
+        public ExtractionRule removeExtractionRule(UUID id) {
+            return new ExtractionRule(id, "ReqAuthPay", List.of(), List.of(), "REMOVED", true, 2);
         }
 
         @Override

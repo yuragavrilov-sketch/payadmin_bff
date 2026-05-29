@@ -23,10 +23,12 @@ public class SbpConfigUseCase {
     public List<Upstream> listUpstreams() { return port.listUpstreams(); }
     public Upstream createUpstream(UpstreamRequest r) { return port.createUpstream(r); }
     public Upstream patchUpstream(UUID id, UpstreamRequest r) { return port.patchUpstream(id, r); }
+    public Upstream removeUpstream(UUID id) { return port.removeUpstream(id); }
 
     public List<ExtractionRule> listExtractionRules() { return port.listExtractionRules(); }
     public ExtractionRule createExtractionRule(ExtractionRuleRequest r) { return port.createExtractionRule(r); }
     public ExtractionRule patchExtractionRule(UUID id, ExtractionRuleRequest r) { return port.patchExtractionRule(id, r); }
+    public ExtractionRule removeExtractionRule(UUID id) { return port.removeExtractionRule(id); }
 
     public TerminalConfig getTerminalConfig() { return port.getTerminalConfig(); }
     public TerminalConfig putTerminalConfig(TerminalConfigRequest r) { return port.putTerminalConfig(r); }

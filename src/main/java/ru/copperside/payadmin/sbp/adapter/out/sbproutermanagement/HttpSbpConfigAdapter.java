@@ -90,6 +90,12 @@ public class HttpSbpConfigAdapter implements SbpConfigPort {
     }
 
     @Override
+    public Upstream removeUpstream(UUID id) {
+        return call("sbp upstream remove failed", () -> data(restClient.delete()
+                .uri(BASE + "/upstreams/{id}", id).headers(this::addHeaders).retrieve().body(UPSTREAM)));
+    }
+
+    @Override
     public List<ExtractionRule> listExtractionRules() {
         return call("sbp extraction-rule list failed", () -> dataList(restClient.get()
                 .uri(BASE + "/extraction-rules").headers(this::addHeaders).retrieve().body(RULES)));
@@ -107,6 +113,12 @@ public class HttpSbpConfigAdapter implements SbpConfigPort {
         return call("sbp extraction-rule patch failed", () -> data(restClient.patch()
                 .uri(BASE + "/extraction-rules/{id}", id).contentType(MediaType.APPLICATION_JSON).body(request)
                 .headers(this::addHeaders).retrieve().body(RULE)));
+    }
+
+    @Override
+    public ExtractionRule removeExtractionRule(UUID id) {
+        return call("sbp extraction-rule remove failed", () -> data(restClient.delete()
+                .uri(BASE + "/extraction-rules/{id}", id).headers(this::addHeaders).retrieve().body(RULE)));
     }
 
     @Override

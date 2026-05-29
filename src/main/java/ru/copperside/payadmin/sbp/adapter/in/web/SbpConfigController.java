@@ -56,6 +56,11 @@ public class SbpConfigController {
         return ApiResponse.success(useCase.patchUpstream(id, request), clock);
     }
 
+    @DeleteMapping("/upstreams/{id}")
+    public ApiResponse<Upstream> removeUpstream(@PathVariable UUID id) {
+        return ApiResponse.success(useCase.removeUpstream(id), clock);
+    }
+
     @GetMapping("/extraction-rules")
     public ApiResponse<List<ExtractionRule>> listExtractionRules() {
         return ApiResponse.success(useCase.listExtractionRules(), clock);
@@ -70,6 +75,11 @@ public class SbpConfigController {
     public ApiResponse<ExtractionRule> patchExtractionRule(
             @PathVariable UUID id, @RequestBody ExtractionRuleRequest request) {
         return ApiResponse.success(useCase.patchExtractionRule(id, request), clock);
+    }
+
+    @DeleteMapping("/extraction-rules/{id}")
+    public ApiResponse<ExtractionRule> removeExtractionRule(@PathVariable UUID id) {
+        return ApiResponse.success(useCase.removeExtractionRule(id), clock);
     }
 
     @GetMapping("/terminal-config")
