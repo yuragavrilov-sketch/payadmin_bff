@@ -6,9 +6,11 @@ import ru.copperside.payadmin.limit.domain.MerchantGroup;
 import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
 import ru.copperside.payadmin.limit.domain.OperationType;
+import ru.copperside.payadmin.limit.domain.RuntimeManifest;
 import ru.copperside.payadmin.limit.domain.RuleManifest;
 import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -110,5 +112,21 @@ public class LimitManagementUseCase {
 
     public RuleManifest getRuleManifest(UUID id) {
         return port.getRuleManifest(id);
+    }
+
+    public RuntimeManifest compileRuntimeManifest(Instant effectiveFrom) {
+        return port.compileRuntimeManifest(effectiveFrom);
+    }
+
+    public List<RuntimeManifest.Descriptor> listRuntimeManifests(Instant at, int limit) {
+        return port.listRuntimeManifests(at, limit);
+    }
+
+    public RuntimeManifest getActiveRuntimeManifest(Instant at) {
+        return port.getActiveRuntimeManifest(at);
+    }
+
+    public RuntimeManifest rollbackRuntimeManifest(UUID id, Instant effectiveFrom) {
+        return port.rollbackRuntimeManifest(id, effectiveFrom);
     }
 }

@@ -31,10 +31,12 @@ import ru.copperside.payadmin.limit.domain.MerchantGroup;
 import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
 import ru.copperside.payadmin.limit.domain.OperationType;
+import ru.copperside.payadmin.limit.domain.RuntimeManifest;
 import ru.copperside.payadmin.limit.domain.RuleManifest;
 import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
 import java.net.http.HttpClient;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -76,6 +78,12 @@ public class HttpLimitManagementAdapter implements LimitManagementPort {
             new ParameterizedTypeReference<>() {
             };
     private static final ParameterizedTypeReference<LimitManagementApiResponse<RuleManifest>> RULE_MANIFEST_TYPE =
+            new ParameterizedTypeReference<>() {
+            };
+    private static final ParameterizedTypeReference<LimitManagementApiResponse<RuntimeManifest>> RUNTIME_MANIFEST_TYPE =
+            new ParameterizedTypeReference<>() {
+            };
+    private static final ParameterizedTypeReference<LimitManagementApiResponse<List<RuntimeManifest.Descriptor>>> RUNTIME_MANIFEST_DESCRIPTORS_TYPE =
             new ParameterizedTypeReference<>() {
             };
 
@@ -423,6 +431,58 @@ public class HttpLimitManagementAdapter implements LimitManagementPort {
         });
     }
 
+    @Override
+    public RuntimeManifest compileRuntimeManifest(Instant effectiveFrom) {
+        return call("limit-management runtime manifest compile request failed", () -> {
+            LimitManagementApiResponse<RuntimeManifest> response = restClient.post()
+                    .uri("/internal/v1/limit-management/runtime-manifests")
+                    .headers(this::addHeaders)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new RuntimeManifestRequest(effectiveFrom))
+                    .retrieve()
+                    .body(RUNTIME_MANIFEST_TYPE);
+            return response == null ? null : response.data();
+        });
+    }
+
+    @Override
+    public List<RuntimeManifest.Descriptor> listRuntimeManifests(Instant at, int limit) {
+        return call("limit-management runtime manifest lifecycle request failed", () -> {
+            LimitManagementApiResponse<List<RuntimeManifest.Descriptor>> response = restClient.get()
+                    .uri("/internal/v1/limit-management/runtime-manifests?at={at}&limit={limit}", at, limit)
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(RUNTIME_MANIFEST_DESCRIPTORS_TYPE);
+            return response == null ? List.of() : response.data();
+        });
+    }
+
+    @Override
+    public RuntimeManifest getActiveRuntimeManifest(Instant at) {
+        return call("limit-management active runtime manifest request failed", () -> {
+            LimitManagementApiResponse<RuntimeManifest> response = restClient.get()
+                    .uri("/internal/v1/limit-management/runtime-manifests/active?at={at}", at)
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(RUNTIME_MANIFEST_TYPE);
+            return response == null ? null : response.data();
+        });
+    }
+
+    @Override
+    public RuntimeManifest rollbackRuntimeManifest(UUID id, Instant effectiveFrom) {
+        return call("limit-management runtime manifest rollback request failed", () -> {
+            LimitManagementApiResponse<RuntimeManifest> response = restClient.post()
+                    .uri("/internal/v1/limit-management/runtime-manifests/{manifestId}/rollback", id)
+                    .headers(this::addHeaders)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new RuntimeManifestRequest(effectiveFrom))
+                    .retrieve()
+                    .body(RUNTIME_MANIFEST_TYPE);
+            return response == null ? null : response.data();
+        });
+    }
+
     private <T> T call(String message, Supplier<T> supplier) {
         try {
             return supplier.get();
@@ -454,6 +514,9 @@ public class HttpLimitManagementAdapter implements LimitManagementPort {
         if (traceId != null && !traceId.isBlank()) {
             headers.set(RequestIdFilter.HEADER_NAME, traceId);
         }
+    }
+
+    private record RuntimeManifestRequest(Instant effectiveFrom) {
     }
 
     private String trimTrailingSlash(String value) {

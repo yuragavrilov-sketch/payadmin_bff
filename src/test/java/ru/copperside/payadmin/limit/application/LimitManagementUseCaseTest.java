@@ -14,6 +14,7 @@ import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
 import ru.copperside.payadmin.limit.domain.OperationDirection;
 import ru.copperside.payadmin.limit.domain.OperationType;
+import ru.copperside.payadmin.limit.domain.RuntimeManifest;
 import ru.copperside.payadmin.limit.domain.RuleManifest;
 import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
@@ -442,6 +443,27 @@ class LimitManagementUseCaseTest {
             return manifest();
         }
 
+        @Override
+        public RuntimeManifest compileRuntimeManifest(Instant effectiveFrom) {
+            return runtimeManifest(effectiveFrom);
+        }
+
+        @Override
+        public List<RuntimeManifest.Descriptor> listRuntimeManifests(Instant at, int limit) {
+            return List.of(new RuntimeManifest.Descriptor(manifestId, 1, "sha256:test", NOW, at, "ACTIVE"));
+        }
+
+        @Override
+        public RuntimeManifest getActiveRuntimeManifest(Instant at) {
+            return runtimeManifest(at);
+        }
+
+        @Override
+        public RuntimeManifest rollbackRuntimeManifest(UUID id, Instant effectiveFrom) {
+            capturedManifestId = id;
+            return runtimeManifest(effectiveFrom);
+        }
+
         private OperationType operationType(String code, OperationDirection direction, boolean enabled) {
             return new OperationType(operationTypeId, code, code.replace('_', ' '), "SBP", direction, enabled, 10, NOW, NOW);
         }
@@ -466,6 +488,24 @@ class LimitManagementUseCaseTest {
                             ),
                             new RuleManifest.Measure(LimitRuleMetric.AMOUNT, LimitRulePeriod.DAY, "RUB")
                     )),
+                    List.of()
+            );
+        }
+
+        private RuntimeManifest runtimeManifest(Instant effectiveFrom) {
+            return new RuntimeManifest(
+                    manifestId,
+                    1,
+                    "VALID",
+                    "sha256:test",
+                    NOW,
+                    effectiveFrom,
+                    0,
+                    0,
+                    0,
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     List.of()
             );
         }

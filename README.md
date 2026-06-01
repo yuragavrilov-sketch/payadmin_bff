@@ -23,6 +23,10 @@ Implemented browser-facing endpoints:
 | `POST` | `/api/v1/limits/rule-manifests` | Compile active rules into the latest valid manifest. |
 | `GET` | `/api/v1/limits/rule-manifests/latest` | Read the latest valid manifest. |
 | `GET` | `/api/v1/limits/rule-manifests/{manifestId}` | Read a manifest by ID. |
+| `GET` | `/api/v1/limits/runtime-manifests` | List runtime manifest lifecycle history. |
+| `POST` | `/api/v1/limits/runtime-manifests` | Compile and schedule an engine-facing runtime manifest. |
+| `GET` | `/api/v1/limits/runtime-manifests/active` | Read the active runtime manifest at a UTC instant. |
+| `POST` | `/api/v1/limits/runtime-manifests/{manifestId}/rollback` | Create a scheduled runtime manifest from an older payload. |
 | `DELETE` | `/api/v1/sbp/upstreams/{id}` | Mark an SBP upstream for removal (pass-through to `sbp-router-management`). |
 | `DELETE` | `/api/v1/sbp/extraction-rules/{id}` | Mark an SBP extraction rule for removal (pass-through to `sbp-router-management`). |
 
@@ -190,4 +194,3 @@ internal services.
 mvn test
 mvn clean verify
 ```
-

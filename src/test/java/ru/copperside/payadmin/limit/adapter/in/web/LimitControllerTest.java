@@ -40,6 +40,7 @@ import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
 import ru.copperside.payadmin.limit.domain.OperationDirection;
 import ru.copperside.payadmin.limit.domain.OperationType;
+import ru.copperside.payadmin.limit.domain.RuntimeManifest;
 import ru.copperside.payadmin.limit.domain.RuleManifest;
 import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
@@ -465,6 +466,53 @@ class LimitControllerTest {
         assertThat(limitManagementPort.lastManifestId).isEqualTo(MANIFEST_ID);
     }
 
+    @Test
+    void compilesRuntimeManifest() throws Exception {
+        mockMvc.perform(post("/api/v1/limits/runtime-manifests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"effectiveFrom":"2026-05-29T10:15:00Z"}
+                                """)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(MANIFEST_ID.toString()))
+                .andExpect(jsonPath("$.data.effectiveFrom").value("2026-05-29T10:15:00Z"));
+    }
+
+    @Test
+    void listsRuntimeManifestLifecycle() throws Exception {
+        mockMvc.perform(get("/api/v1/limits/runtime-manifests")
+                        .queryParam("at", "2026-05-29T10:35:00Z")
+                        .queryParam("limit", "10")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").value(MANIFEST_ID.toString()))
+                .andExpect(jsonPath("$.data[0].lifecycleStatus").value("ACTIVE"));
+    }
+
+    @Test
+    void readsActiveRuntimeManifest() throws Exception {
+        mockMvc.perform(get("/api/v1/limits/runtime-manifests/active")
+                        .queryParam("at", "2026-05-29T10:35:00Z")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("VALID"));
+    }
+
+    @Test
+    void rollsBackRuntimeManifest() throws Exception {
+        mockMvc.perform(post("/api/v1/limits/runtime-manifests/{manifestId}/rollback", MANIFEST_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"effectiveFrom":"2026-05-29T10:30:00Z"}
+                                """)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.effectiveFrom").value("2026-05-29T10:30:00Z"));
+
+        assertThat(limitManagementPort.lastManifestId).isEqualTo(MANIFEST_ID);
+    }
+
     @TestConfiguration(proxyBeanMethods = false)
     static class TestSupport {
 
@@ -716,6 +764,27 @@ class LimitControllerTest {
             return manifest();
         }
 
+        @Override
+        public RuntimeManifest compileRuntimeManifest(Instant effectiveFrom) {
+            return runtimeManifest(effectiveFrom);
+        }
+
+        @Override
+        public List<RuntimeManifest.Descriptor> listRuntimeManifests(Instant at, int limit) {
+            return List.of(new RuntimeManifest.Descriptor(MANIFEST_ID, 1, "sha256:test", NOW, at, "ACTIVE"));
+        }
+
+        @Override
+        public RuntimeManifest getActiveRuntimeManifest(Instant at) {
+            return runtimeManifest(at);
+        }
+
+        @Override
+        public RuntimeManifest rollbackRuntimeManifest(UUID id, Instant effectiveFrom) {
+            lastManifestId = id;
+            return runtimeManifest(effectiveFrom);
+        }
+
         private MerchantGroup group(String code, String name, boolean enabled) {
             return new MerchantGroup(GROUP_ID, TYPE_ID, code, name, "High risk merchants", enabled, NOW, NOW);
         }
@@ -763,6 +832,24 @@ class LimitControllerTest {
                             ),
                             new RuleManifest.Measure(LimitRuleMetric.AMOUNT, LimitRulePeriod.DAY, "RUB")
                     )),
+                    List.of()
+            );
+        }
+
+        private RuntimeManifest runtimeManifest(Instant effectiveFrom) {
+            return new RuntimeManifest(
+                    MANIFEST_ID,
+                    1,
+                    "VALID",
+                    "sha256:test",
+                    NOW,
+                    effectiveFrom,
+                    0,
+                    0,
+                    0,
+                    List.of(),
+                    List.of(),
+                    List.of(),
                     List.of()
             );
         }

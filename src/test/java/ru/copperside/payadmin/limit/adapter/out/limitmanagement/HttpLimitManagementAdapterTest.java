@@ -32,6 +32,7 @@ import ru.copperside.payadmin.limit.domain.MerchantGroupMembership;
 import ru.copperside.payadmin.limit.domain.MerchantGroupType;
 import ru.copperside.payadmin.limit.domain.OperationDirection;
 import ru.copperside.payadmin.limit.domain.OperationType;
+import ru.copperside.payadmin.limit.domain.RuntimeManifest;
 import ru.copperside.payadmin.limit.domain.RuleManifest;
 import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
@@ -415,6 +416,54 @@ class HttpLimitManagementAdapterTest {
         assertRequest("/internal/v1/limit-management/rule-manifests/" + MANIFEST_ID);
     }
 
+    @Test
+    void compileRuntimeManifestPostsEffectiveFrom() throws Exception {
+        server.enqueue(json(runtimeManifestEnvelope()));
+
+        RuntimeManifest manifest = client().compileRuntimeManifest(Instant.parse("2026-05-29T10:15:00Z"));
+
+        assertThat(manifest.id()).isEqualTo(MANIFEST_ID);
+        assertThat(manifest.effectiveFrom()).isEqualTo(Instant.parse("2026-05-29T10:15:00Z"));
+        RecordedRequest request = assertRequest("/internal/v1/limit-management/runtime-manifests");
+        assertThat(request.getMethod()).isEqualTo("POST");
+        assertThat(request.getBody().readUtf8()).contains("\"effectiveFrom\":\"2026-05-29T10:15:00Z\"");
+    }
+
+    @Test
+    void listRuntimeManifestsReadsLifecycleHistory() throws Exception {
+        server.enqueue(json(runtimeManifestDescriptorsEnvelope()));
+
+        List<RuntimeManifest.Descriptor> descriptors = client().listRuntimeManifests(
+                Instant.parse("2026-05-29T10:35:00Z"),
+                10);
+
+        assertThat(descriptors).hasSize(1);
+        assertThat(descriptors.getFirst().lifecycleStatus()).isEqualTo("ACTIVE");
+        assertRequest("/internal/v1/limit-management/runtime-manifests?at=2026-05-29T10%3A35%3A00Z&limit=10");
+    }
+
+    @Test
+    void getActiveRuntimeManifestReadsActiveEndpoint() throws Exception {
+        server.enqueue(json(runtimeManifestEnvelope()));
+
+        RuntimeManifest manifest = client().getActiveRuntimeManifest(Instant.parse("2026-05-29T10:35:00Z"));
+
+        assertThat(manifest.version()).isEqualTo(42);
+        assertRequest("/internal/v1/limit-management/runtime-manifests/active?at=2026-05-29T10%3A35%3A00Z");
+    }
+
+    @Test
+    void rollbackRuntimeManifestPostsEffectiveFrom() throws Exception {
+        server.enqueue(json(runtimeManifestEnvelope()));
+
+        RuntimeManifest manifest = client().rollbackRuntimeManifest(MANIFEST_ID, Instant.parse("2026-05-29T10:30:00Z"));
+
+        assertThat(manifest.id()).isEqualTo(MANIFEST_ID);
+        RecordedRequest request = assertRequest("/internal/v1/limit-management/runtime-manifests/" + MANIFEST_ID + "/rollback");
+        assertThat(request.getMethod()).isEqualTo("POST");
+        assertThat(request.getBody().readUtf8()).contains("\"effectiveFrom\":\"2026-05-29T10:30:00Z\"");
+    }
+
     private RecordedRequest assertRequest(String path) throws Exception {
         RecordedRequest request = server.takeRequest();
         assertThat(request.getPath()).isEqualTo(path);
@@ -721,5 +770,50 @@ class HttpLimitManagementAdapterTest {
                   "timestamp": "%s"
                 }
                 """.formatted(MANIFEST_ID, NOW, RULE_ID, NOW);
+    }
+
+    private String runtimeManifestEnvelope() {
+        return """
+                {
+                  "data": {
+                    "id": "%s",
+                    "version": 42,
+                    "status": "VALID",
+                    "checksum": "sha256:8e4fb0f6d1f6d8a8e3c2f0a0c6a2d2f0f25c3adf2846d8fd11f6d8a809122001",
+                    "createdAt": "2026-05-29T10:00:00Z",
+                    "effectiveFrom": "2026-05-29T10:15:00Z",
+                    "ruleCount": 0,
+                    "assignmentCount": 0,
+                    "membershipCount": 0,
+                    "rules": [],
+                    "assignments": [],
+                    "memberships": [],
+                    "diagnostics": []
+                  },
+                  "meta": null,
+                  "error": null,
+                  "timestamp": "2026-05-29T10:01:00Z"
+                }
+                """.formatted(MANIFEST_ID);
+    }
+
+    private String runtimeManifestDescriptorsEnvelope() {
+        return """
+                {
+                  "data": [
+                    {
+                      "id": "%s",
+                      "version": 42,
+                      "checksum": "sha256:8e4fb0f6d1f6d8a8e3c2f0a0c6a2d2f0f25c3adf2846d8fd11f6d8a809122001",
+                      "createdAt": "2026-05-29T10:00:00Z",
+                      "effectiveFrom": "2026-05-29T10:15:00Z",
+                      "lifecycleStatus": "ACTIVE"
+                    }
+                  ],
+                  "meta": null,
+                  "error": null,
+                  "timestamp": "2026-05-29T10:01:00Z"
+                }
+                """.formatted(MANIFEST_ID);
     }
 }

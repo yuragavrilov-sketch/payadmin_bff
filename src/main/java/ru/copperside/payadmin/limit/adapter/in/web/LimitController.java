@@ -29,6 +29,7 @@ import ru.copperside.payadmin.limit.domain.LimitRuleMetric;
 import ru.copperside.payadmin.limit.domain.LimitRulePeriod;
 import ru.copperside.payadmin.limit.domain.LimitTargetType;
 import ru.copperside.payadmin.limit.domain.OperationDirection;
+import ru.copperside.payadmin.limit.domain.RuntimeManifest;
 import ru.copperside.payadmin.limit.domain.RuleManifest;
 import ru.copperside.payadmin.limit.domain.RuleDictionaries;
 
@@ -263,6 +264,34 @@ public class LimitController {
         return ApiResponse.success(useCase.getRuleManifest(manifestId), clock);
     }
 
+    @PostMapping("/runtime-manifests")
+    public ApiResponse<RuntimeManifest> compileRuntimeManifest(
+            @Valid @RequestBody RuntimeManifestRequest request
+    ) {
+        return ApiResponse.success(useCase.compileRuntimeManifest(request.effectiveFrom()), clock);
+    }
+
+    @GetMapping("/runtime-manifests")
+    public ApiResponse<List<RuntimeManifest.Descriptor>> listRuntimeManifests(
+            @RequestParam Instant at,
+            @RequestParam(defaultValue = "20") int limit
+    ) {
+        return ApiResponse.success(useCase.listRuntimeManifests(at, limit), clock);
+    }
+
+    @GetMapping("/runtime-manifests/active")
+    public ApiResponse<RuntimeManifest> getActiveRuntimeManifest(@RequestParam Instant at) {
+        return ApiResponse.success(useCase.getActiveRuntimeManifest(at), clock);
+    }
+
+    @PostMapping("/runtime-manifests/{manifestId}/rollback")
+    public ApiResponse<RuntimeManifest> rollbackRuntimeManifest(
+            @PathVariable UUID manifestId,
+            @Valid @RequestBody RuntimeManifestRequest request
+    ) {
+        return ApiResponse.success(useCase.rollbackRuntimeManifest(manifestId, request.effectiveFrom()), clock);
+    }
+
     public record CreateGroupTypeRequest(
             @NotBlank String code,
             @NotBlank String name,
@@ -329,5 +358,8 @@ public class LimitController {
             LimitRulePeriod period,
             String currency
     ) {
+    }
+
+    public record RuntimeManifestRequest(@NotNull Instant effectiveFrom) {
     }
 }
