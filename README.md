@@ -112,7 +112,7 @@ Main environment variables:
 |---|---|---|
 | `SERVER_PORT` | `8083` | HTTP port |
 | `PAY_ENVIRONMENT` | profile default: `local`, `test`, or `prod` | Environment id used for Config Server label and Vault paths |
-| `CONFIG_SERVER_URL` | `http://pay-config:8080` | Config Server URL |
+| `CONFIG_SERVER_URL` | `http://pay-payconfig-server:8080` | Config Server URL |
 | `CONFIG_SERVER_ENABLED` | `false` locally, `true` in prod profile | Enables Config Server client |
 | `CONFIG_SERVER_LABEL` | `${PAY_ENVIRONMENT}` | Config Server git branch/label |
 | `VAULT_ENABLED` | `false` locally, `true` in prod profile | Enables Vault config import |
