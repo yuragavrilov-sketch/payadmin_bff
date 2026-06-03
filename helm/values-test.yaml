@@ -1,12 +1,16 @@
 image:
-  repository: harbor.online.tkbbank.ru/tkbpay/payadmin_bff   # TODO: align with CI image path; tag injected by CI
+  repository: harbor.online.tkbbank.ru/tkbpay/payadmin_bff   # must equal CI image path ($IMAGE_REGISTRY/$IMAGE_REGISTRY_PROJECT/$CI_PROJECT_NAME); tag injected by CI
 serviceAccount:
-  name: test-adapters            # TODO: confirm SA
+  create: true                   # dedicated SA, bound to the Vault k8s-auth role `payadmin-bff`
+  name: payadmin-bff
+imagePullSecrets:
+  enabled: true
+  name: test-adapters-ips        # namespace Harbor pull secret (the dedicated SA has none of its own)
 vault:
-  enabled: false
+  enabled: false                 # chart's own Vault integration off — the app is the Vault client (Spring Cloud Vault)
 replicaCount: 1
 
-# Internal BFF — the SPA's nginx proxies /api to it. No external ingress.
+# Internal BFF — the SPA's nginx proxies /api to it. No external ingress (front deferred).
 ingress:
   enabled: false
 
@@ -35,31 +39,43 @@ extraEnvs:
     value: test
   - name: SERVER_PORT
     value: "8080"                # align with chart container port
-  - name: SPRING_CLOUD_VAULT_ENABLED
-    value: "false"               # secrets via k8s Secret instead of Vault
+  # pay.environment drives the Vault KV contexts (pay/<env>/...) and the Config Server label; it must
+  # be an env var because config-data resolves before the active profile is applied (see ADR-0009).
+  - name: PAY_ENVIRONMENT
+    value: test
+  # Enable the external config-data clients (application.yml defaults both to false for standalone).
+  - name: VAULT_ENABLED
+    value: "true"
+  - name: CONFIG_SERVER_ENABLED
+    value: "true"
+  # --- Vault: application secrets read directly (Spring Cloud Vault, Kubernetes auth) ---
+  - name: SPRING_CLOUD_VAULT_URI
+    value: "https://vault.online.tkbbank.ru"
+  - name: SPRING_CLOUD_VAULT_AUTHENTICATION
+    value: "KUBERNETES"
+  - name: SPRING_CLOUD_VAULT_KUBERNETES_KUBERNETES_PATH
+    value: "payadmin-test"
+  - name: SPRING_CLOUD_VAULT_KUBERNETES_ROLE
+    value: "payadmin-bff"
+  # Vault holds the shared internal-admin-key (one secret, both upstream property keys = same value).
+  - name: VAULT_KV_CONTEXTS
+    value: "test/payadmin-bff-internal-admin-key"
+  # --- Config Server (payconfig-server, Basic auth) ---
   - name: CONFIG_SERVER_URL
     value: "http://payconfig-server:8080"
   - name: CONFIG_CLIENT_USERNAME
     value: "configadmin"
-  - name: KEYCLOAK_ISSUER_URI
-    value: "https://keycloak.tkbbank.ru/realms/payadmin"   # TODO: real corp Keycloak issuer
-  - name: MERCHANTS_CORE_BASE_URL
-    value: "http://merchants-core:8082"                    # TODO: confirm merchants-core deployed
-  - name: PAYADMIN_LIMIT_MANAGEMENT_BASE_URL
-    value: "http://pay-limit-management:8084"              # TODO: confirm pay-limit-management deployed
-  # --- Secrets via pre-created k8s Secret `payadmin-bff-secret` ---
+  # Bootstrap credential (ADR-0009): from the SAME k8s Secret/key payconfig-server validates against,
+  # so client and server share one source of truth. Present before any config-data import.
   - name: CONFIG_CLIENT_PASSWORD
     valueFrom:
       secretKeyRef:
-        name: payadmin-bff-secret
-        key: CONFIG_CLIENT_PASSWORD
-  - name: MERCHANTS_CORE_INTERNAL_ADMIN_API_KEY
-    valueFrom:
-      secretKeyRef:
-        name: payadmin-bff-secret
-        key: MERCHANTS_CORE_INTERNAL_ADMIN_API_KEY
-  - name: PAYADMIN_LIMIT_MANAGEMENT_INTERNAL_ADMIN_API_KEY
-    valueFrom:
-      secretKeyRef:
-        name: payadmin-bff-secret
-        key: PAYADMIN_LIMIT_MANAGEMENT_INTERNAL_ADMIN_API_KEY
+        name: payconfig-server-secret
+        key: CONFIG_SERVER_PASSWORD
+  # Non-secret app config (Keycloak issuer, merchants-core / limit-management base URLs,
+  # required-authority) comes from Config Server — config-repo branch `test`, file
+  # `payadmin-bff/application.yaml`. Not set here (an env var would override Config Server).
+  # Application secret (shared internal-admin-key) is read from Vault (see VAULT_KV_CONTEXTS):
+  #   pay/test/payadmin-bff-internal-admin-key keys:
+  #     payadmin-bff.merchants-core.internal-admin-api-key     -> upstream X-Internal-Admin-Key
+  #     payadmin-bff.limit-management.internal-admin-api-key   -> upstream X-Internal-Admin-Key

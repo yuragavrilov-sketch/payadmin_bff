@@ -24,7 +24,7 @@ spring:
       kv:
         backend: ${VAULT_KV_BACKEND:pay}
         default-context: ""
-        application-name: ${VAULT_KV_CONTEXTS:${pay.environment}/${spring.application.name}-merchants-core-internal-admin-key}
+        application-name: ${VAULT_KV_CONTEXTS:${pay.environment}/${spring.application.name}-internal-admin-key}
         profiles: []
   security:
     oauth2:
