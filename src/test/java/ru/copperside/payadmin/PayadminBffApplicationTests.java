@@ -25,7 +25,7 @@ class PayadminBffApplicationTests {
         assertThat(environment.getProperty("spring.cloud.config.label")).isEqualTo("local");
         assertThat(environment.getProperty("spring.cloud.vault.kv.backend")).isEqualTo("pay");
         assertThat(environment.getProperty("spring.cloud.vault.kv.application-name"))
-                .isEqualTo("local/payadmin-bff-merchants-core-internal-admin-key");
+                .isEqualTo("local/sbp-router-admin-key");
     }
 }
 
