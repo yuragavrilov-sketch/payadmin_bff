@@ -57,9 +57,10 @@ extraEnvs:
     value: "payadmin-test"
   - name: SPRING_CLOUD_VAULT_KUBERNETES_ROLE
     value: "payadmin-bff"
-  # Vault holds the shared internal-admin-key (one secret, both upstream property keys = same value).
+  # Shared contour internal-admin-key — single Vault secret pay/test/internal-admin-key (key
+  # pay.internal-admin-api-key), mapped into both upstream admin-key properties via placeholder.
   - name: VAULT_KV_CONTEXTS
-    value: "test/payadmin-bff-internal-admin-key"
+    value: "test/internal-admin-key"
   # --- Config Server (payconfig-server, Basic auth) ---
   - name: CONFIG_SERVER_URL
     value: "http://payconfig-server:8080"
@@ -75,7 +76,6 @@ extraEnvs:
   # Non-secret app config (Keycloak issuer, merchants-core / limit-management base URLs,
   # required-authority) comes from Config Server — config-repo branch `test`, file
   # `payadmin-bff/application.yaml`. Not set here (an env var would override Config Server).
-  # Application secret (shared internal-admin-key) is read from Vault (see VAULT_KV_CONTEXTS):
-  #   pay/test/payadmin-bff-internal-admin-key keys:
-  #     payadmin-bff.merchants-core.internal-admin-api-key     -> upstream X-Internal-Admin-Key
-  #     payadmin-bff.limit-management.internal-admin-api-key   -> upstream X-Internal-Admin-Key
+  # Application secret read from Vault (see VAULT_KV_CONTEXTS):
+  #   pay/test/internal-admin-key  key pay.internal-admin-api-key  (shared contour value)
+  # mapped in application.yml into both payadmin-bff.{merchants-core,limit-management}.internal-admin-api-key.
