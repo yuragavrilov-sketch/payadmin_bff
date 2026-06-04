@@ -24,7 +24,7 @@ spring:
       kv:
         backend: ${VAULT_KV_BACKEND:pay}
         default-context: ""
-        application-name: ${VAULT_KV_CONTEXTS:${pay.environment}/internal-admin-key}
+        application-name: ${VAULT_KV_CONTEXTS:${pay.environment}/sbp-router-admin-key}
         profiles: []
   security:
     oauth2:
@@ -52,13 +52,13 @@ payadmin-bff:
   limit-management:
     base-url: ${PAYADMIN_LIMIT_MANAGEMENT_BASE_URL:http://localhost:8084}
     internal-admin-header-name: ${PAYADMIN_LIMIT_MANAGEMENT_INTERNAL_ADMIN_HEADER_NAME:X-Internal-Admin-Key}
-    internal-admin-api-key: ${pay.internal-admin-api-key:${PAYADMIN_LIMIT_MANAGEMENT_INTERNAL_ADMIN_API_KEY:}}
+    internal-admin-api-key: ${sbp-router.admin-key:${PAYADMIN_LIMIT_MANAGEMENT_INTERNAL_ADMIN_API_KEY:}}
     connect-timeout: ${PAYADMIN_LIMIT_MANAGEMENT_CONNECT_TIMEOUT:2s}
     read-timeout: ${PAYADMIN_LIMIT_MANAGEMENT_READ_TIMEOUT:5s}
   merchants-core:
     base-url: ${MERCHANTS_CORE_BASE_URL:http://localhost:8082}
     internal-admin-header-name: ${MERCHANTS_CORE_INTERNAL_ADMIN_HEADER:X-Internal-Admin-Key}
-    internal-admin-api-key: ${pay.internal-admin-api-key:${MERCHANTS_CORE_INTERNAL_ADMIN_API_KEY:}}
+    internal-admin-api-key: ${sbp-router.admin-key:${MERCHANTS_CORE_INTERNAL_ADMIN_API_KEY:}}
     connect-timeout: ${MERCHANTS_CORE_CONNECT_TIMEOUT:2s}
     read-timeout: ${MERCHANTS_CORE_READ_TIMEOUT:5s}
     page-size: ${MERCHANTS_CORE_PAGE_SIZE:500}
