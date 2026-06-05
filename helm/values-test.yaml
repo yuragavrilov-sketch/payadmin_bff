@@ -18,8 +18,8 @@ ports:
   - containerPort: 8080
 service:
   name: payadmin-bff
-  port: 8083            # canonical bff port — the SPA nginx proxies /api to payadmin-bff:8083
-  targetPort: 8080      # pod listens on 8080 (SERVER_PORT=8080)
+  port: 8080            # the SPA nginx proxies /api to payadmin-bff:8080 (pod SERVER_PORT=8080)
+  targetPort: 8080
 
 livenessProbe:
   initialDelaySeconds: 30
