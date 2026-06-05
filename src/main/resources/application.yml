@@ -63,6 +63,12 @@ payadmin-bff:
     read-timeout: ${MERCHANTS_CORE_READ_TIMEOUT:5s}
     page-size: ${MERCHANTS_CORE_PAGE_SIZE:500}
     max-pages: ${MERCHANTS_CORE_MAX_PAGES:20}
+  sbp-router-management:
+    base-url: ${SBP_ROUTER_MANAGEMENT_BASE_URL:http://localhost:8087}
+    internal-admin-header-name: ${SBP_ROUTER_MANAGEMENT_INTERNAL_ADMIN_HEADER:X-Internal-Admin-Key}
+    internal-admin-api-key: ${sbp-router.admin-key:${SBP_ROUTER_MANAGEMENT_INTERNAL_ADMIN_API_KEY:}}
+    connect-timeout: ${SBP_ROUTER_MANAGEMENT_CONNECT_TIMEOUT:2s}
+    read-timeout: ${SBP_ROUTER_MANAGEMENT_READ_TIMEOUT:5s}
   merchants:
     unknown-mcc: ${PAYADMIN_UNKNOWN_MCC:0000}
   security:
