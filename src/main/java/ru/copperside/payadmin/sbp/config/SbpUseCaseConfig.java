@@ -6,6 +6,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+import ru.copperside.payadmin.sbp.application.fleet.SbpFleetUseCase;
+import ru.copperside.payadmin.sbp.application.fleet.port.out.SbpFleetPort;
 import ru.copperside.payadmin.sbp.application.traffic.SbpTrafficUseCase;
 import ru.copperside.payadmin.sbp.application.traffic.port.out.SbpTrafficPort;
 
@@ -17,6 +19,11 @@ public class SbpUseCaseConfig {
     @Bean
     SbpTrafficUseCase sbpTrafficUseCase(SbpTrafficPort port) {
         return new SbpTrafficUseCase(port);
+    }
+
+    @Bean
+    SbpFleetUseCase sbpFleetUseCase(SbpFleetPort port) {
+        return new SbpFleetUseCase(port);
     }
 
     @Bean
