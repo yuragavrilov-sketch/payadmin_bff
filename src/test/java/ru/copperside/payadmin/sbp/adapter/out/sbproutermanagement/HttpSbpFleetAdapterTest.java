@@ -56,6 +56,8 @@ class HttpSbpFleetAdapterTest {
         RouterFleet.RouterInstance i = fleet.routers().get(0);
         assertThat(i.instanceId()).isEqualTo("i-1");
         assertThat(i.status()).isEqualTo("UP");
+        // tolerant to version skew: an older management without the field unwraps to null, not a 500
+        assertThat(i.routingConfigVersion()).isNull();
         assertThat(i.lastHeartbeat()).isEqualTo(Instant.parse("2026-06-16T10:00:00Z"));
         assertThat(i.backends().get(0).url()).isEqualTo("http://a/api");
         assertThat(i.metrics().activeRequests()).isEqualTo(2);

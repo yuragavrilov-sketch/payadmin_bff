@@ -12,6 +12,7 @@ public record RouterFleet(int total, int up, List<RouterInstance> routers) {
             Instant startedAt,
             Instant lastHeartbeat,
             String activeGroup,
+            Long routingConfigVersion,
             List<String> groups,
             List<RouterBackend> backends,
             RouterMetrics metrics

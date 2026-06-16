@@ -52,6 +52,7 @@ class SbpFleetControllerTest {
                 .andExpect(jsonPath("$.data.up").value(1))
                 .andExpect(jsonPath("$.data.routers[0].instanceId").value("i-1"))
                 .andExpect(jsonPath("$.data.routers[0].status").value("UP"))
+                .andExpect(jsonPath("$.data.routers[0].routingConfigVersion").value(9))
                 .andExpect(jsonPath("$.data.routers[0].backends[0].url").value("http://a/api"));
     }
 
@@ -83,7 +84,7 @@ class SbpFleetControllerTest {
         public RouterFleet listRouters() {
             return new RouterFleet(1, 1, List.of(new RouterFleet.RouterInstance(
                     "i-1", "UP", Instant.parse("2026-06-16T09:00:00Z"), Instant.parse("2026-06-16T10:00:00Z"),
-                    "default", List.of("default"),
+                    "default", 9L, List.of("default"),
                     List.of(new RouterFleet.RouterBackend("http://a/api", "default", false)),
                     new RouterFleet.RouterMetrics(2, 10, 1, 20, 10, 40.5, 120))));
         }
