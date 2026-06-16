@@ -1,6 +1,7 @@
 package ru.copperside.payadmin.sbp.adapter.out.sbproutermanagement;
 
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
@@ -40,7 +41,8 @@ public class HttpSbpTrafficAdapter implements SbpTrafficPort {
     private final SbpRouterManagementProperties properties;
     private final RestClient restClient;
 
-    public HttpSbpTrafficAdapter(SbpRouterManagementProperties properties, RestClient restClient) {
+    public HttpSbpTrafficAdapter(SbpRouterManagementProperties properties,
+                                 @Qualifier("sbpRestClient") RestClient restClient) {
         this.properties = properties;
         this.restClient = restClient;
     }

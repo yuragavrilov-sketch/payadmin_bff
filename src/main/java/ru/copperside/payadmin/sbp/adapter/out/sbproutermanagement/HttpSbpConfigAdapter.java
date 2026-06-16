@@ -1,6 +1,7 @@
 package ru.copperside.payadmin.sbp.adapter.out.sbproutermanagement;
 
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -64,7 +65,8 @@ public class HttpSbpConfigAdapter implements SbpConfigPort {
     private final SbpRouterManagementProperties properties;
     private final RestClient restClient;
 
-    public HttpSbpConfigAdapter(SbpRouterManagementProperties properties, RestClient restClient) {
+    public HttpSbpConfigAdapter(SbpRouterManagementProperties properties,
+                                @Qualifier("sbpRestClient") RestClient restClient) {
         this.properties = properties;
         this.restClient = restClient;
     }

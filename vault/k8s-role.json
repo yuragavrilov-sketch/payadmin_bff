@@ -1,0 +1,6 @@
+{
+  "bound_service_account_names": "payadmin-bff",
+  "bound_service_account_namespaces": "test",
+  "policies": "payadmin-bff-test",
+  "ttl": "1h"
+}

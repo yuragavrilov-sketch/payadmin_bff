@@ -125,6 +125,11 @@ Main environment variables:
 | `MERCHANTS_CORE_INTERNAL_ADMIN_API_KEY` | empty | Internal credential value |
 | `MERCHANTS_CORE_CONNECT_TIMEOUT` | `2s` | Upstream connect timeout |
 | `MERCHANTS_CORE_READ_TIMEOUT` | `5s` | Upstream read timeout |
+| `SBP_ROUTER_MANAGEMENT_BASE_URL` | `http://localhost:8087` | `sbp-router-management` upstream base URL (in k8s use the `:8080` Service port) |
+| `SBP_ROUTER_MANAGEMENT_INTERNAL_ADMIN_HEADER` | `X-Internal-Admin-Key` | Internal credential header |
+| `SBP_ROUTER_MANAGEMENT_INTERNAL_ADMIN_API_KEY` | empty | Internal credential value (defaults to the shared `${sbp-router.admin-key}` Vault secret) |
+| `SBP_ROUTER_MANAGEMENT_CONNECT_TIMEOUT` | `2s` | Upstream connect timeout |
+| `SBP_ROUTER_MANAGEMENT_READ_TIMEOUT` | `5s` | Upstream read timeout |
 | `PAYADMIN_UNKNOWN_MCC` | `0000` | Fallback MCC |
 
 Config Server and Vault imports are optional by default for local development.

@@ -69,6 +69,10 @@ payadmin-bff:
     internal-admin-api-key: ${sbp-router.admin-key:${SBP_ROUTER_MANAGEMENT_INTERNAL_ADMIN_API_KEY:}}
     connect-timeout: ${SBP_ROUTER_MANAGEMENT_CONNECT_TIMEOUT:2s}
     read-timeout: ${SBP_ROUTER_MANAGEMENT_READ_TIMEOUT:5s}
+  gos-adapter:
+    base-url: ${GOS_ADAPTER_BASE_URL:http://j-gos-adapter:8080}
+    connect-timeout: ${GOS_ADAPTER_CONNECT_TIMEOUT:2s}
+    read-timeout: ${GOS_ADAPTER_READ_TIMEOUT:5s}
   merchants:
     unknown-mcc: ${PAYADMIN_UNKNOWN_MCC:0000}
   security:
