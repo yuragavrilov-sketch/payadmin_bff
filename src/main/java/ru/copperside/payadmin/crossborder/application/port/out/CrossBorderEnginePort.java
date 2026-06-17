@@ -1,6 +1,5 @@
 package ru.copperside.payadmin.crossborder.application.port.out;
 
-import ru.copperside.payadmin.crossborder.domain.CrossBorderOperation;
 import ru.copperside.payadmin.crossborder.domain.OperationsPage;
 import ru.copperside.payadmin.crossborder.domain.PartnerCountry;
 import ru.copperside.payadmin.crossborder.domain.TransferSettings;

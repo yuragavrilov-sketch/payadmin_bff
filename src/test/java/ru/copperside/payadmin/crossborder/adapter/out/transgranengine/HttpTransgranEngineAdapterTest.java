@@ -11,6 +11,7 @@ import ru.copperside.payadmin.common.application.UpstreamUnavailableException;
 import ru.copperside.payadmin.common.web.RequestIdFilter;
 import ru.copperside.payadmin.crossborder.config.TransgranEngineProperties;
 import ru.copperside.payadmin.crossborder.domain.PartnerCountry;
+import ru.copperside.payadmin.crossborder.domain.TransferSettings;
 
 import java.time.Duration;
 import java.util.List;
@@ -72,5 +73,59 @@ class HttpTransgranEngineAdapterTest {
     void listBanksThrowsUpstreamUnavailableOn503() {
         server.enqueue(new MockResponse().setResponseCode(503));
         assertThatThrownBy(() -> adapter.listBanks()).isInstanceOf(UpstreamUnavailableException.class);
+    }
+
+    @Test
+    void listOperationsMapsDataAndTotalFromMeta() throws Exception {
+        server.enqueue(json("""
+            {"data":[{"id":"11111111-1111-1111-1111-111111111111","requestId":"req-1","type":"CURRENCY_CONVERT",
+              "status":"OK","senderCurrency":"RUB","senderAmount":733.42,"receiverCurrency":"USD","receiverAmount":9.9,
+              "ratePercent":1,"payoutMethod":"card","payoutType":null,"walletId":17,"isTest":true,
+              "expiredDate":"2026-05-14T17:46:21+03:00","createdAt":"2026-06-17T20:00:00Z"}],
+             "meta":{"limit":50,"offset":0,"count":1,"total":7},"timestamp":"2026-06-17T20:00:00Z"}"""));
+
+        var page = adapter.listOperations(50, 0);
+
+        assertThat(page.total()).isEqualTo(7L);
+        assertThat(page.data()).hasSize(1);
+        assertThat(page.data().get(0).requestId()).isEqualTo("req-1");
+        assertThat(page.data().get(0).senderAmount()).isEqualByComparingTo("733.42");
+        RecordedRequest recorded = server.takeRequest();
+        assertThat(recorded.getPath()).isEqualTo("/internal/admin/transgran/operations?limit=50&offset=0");
+    }
+
+    @Test
+    void getSettingsMapsData() throws Exception {
+        server.enqueue(json("""
+            {"data":{"walletId":17,"ratePercent":1,"senderPercent":1,"senderMinCommission":100,
+              "defaultSenderCurrency":"RUB","defaultReceiverCurrency":"USD","defaultPayoutMethod":"card",
+              "testMode":true,"updatedAt":"2026-06-17T20:00:00Z","updatedBy":"flyway-seed"},
+             "timestamp":"2026-06-17T20:00:00Z"}"""));
+
+        TransferSettings s = adapter.getSettings();
+
+        assertThat(s.defaultSenderCurrency()).isEqualTo("RUB");
+        assertThat(s.testMode()).isTrue();
+        assertThat(server.takeRequest().getPath()).isEqualTo("/internal/admin/transgran/settings");
+    }
+
+    @Test
+    void updateSettingsPutsBodyAndReturnsUpdated() throws Exception {
+        server.enqueue(json("""
+            {"data":{"walletId":42,"ratePercent":2.5,"senderPercent":1,"senderMinCommission":150,
+              "defaultSenderCurrency":"RUB","defaultReceiverCurrency":"EUR","defaultPayoutMethod":"card",
+              "testMode":false,"updatedAt":"2026-06-17T21:00:00Z","updatedBy":"payadmin-bff"},
+             "timestamp":"2026-06-17T21:00:00Z"}"""));
+
+        TransferSettings updated = adapter.updateSettings(new ru.copperside.payadmin.crossborder.domain.TransferSettingsUpdate(
+                42L, new java.math.BigDecimal("2.5"), java.math.BigDecimal.ONE, new java.math.BigDecimal("150"),
+                "RUB", "EUR", "card", false));
+
+        assertThat(updated.walletId()).isEqualTo(42L);
+        assertThat(updated.defaultReceiverCurrency()).isEqualTo("EUR");
+        RecordedRequest recorded = server.takeRequest();
+        assertThat(recorded.getMethod()).isEqualTo("PUT");
+        assertThat(recorded.getPath()).isEqualTo("/internal/admin/transgran/settings");
+        assertThat(recorded.getBody().readUtf8()).contains("\"defaultReceiverCurrency\":\"EUR\"");
     }
 }

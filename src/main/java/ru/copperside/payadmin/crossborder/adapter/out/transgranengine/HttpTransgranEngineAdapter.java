@@ -13,6 +13,7 @@ import ru.copperside.payadmin.common.application.UpstreamUnavailableException;
 import ru.copperside.payadmin.common.web.RequestIdFilter;
 import ru.copperside.payadmin.crossborder.application.port.out.CrossBorderEnginePort;
 import ru.copperside.payadmin.crossborder.config.TransgranEngineProperties;
+import ru.copperside.payadmin.crossborder.domain.CrossBorderOperation;
 import ru.copperside.payadmin.crossborder.domain.OperationsPage;
 import ru.copperside.payadmin.crossborder.domain.PartnerCountry;
 import ru.copperside.payadmin.crossborder.domain.TransferSettings;
@@ -24,6 +25,14 @@ import java.util.List;
 public class HttpTransgranEngineAdapter implements CrossBorderEnginePort {
 
     private static final ParameterizedTypeReference<TransgranApiResponse<List<PartnerCountry>>> BANKS_TYPE =
+            new ParameterizedTypeReference<>() {
+            };
+
+    private static final ParameterizedTypeReference<TransgranApiResponse<List<CrossBorderOperation>>> OPS_TYPE =
+            new ParameterizedTypeReference<>() {
+            };
+
+    private static final ParameterizedTypeReference<TransgranApiResponse<TransferSettings>> SETTINGS_TYPE =
             new ParameterizedTypeReference<>() {
             };
 
@@ -55,17 +64,53 @@ public class HttpTransgranEngineAdapter implements CrossBorderEnginePort {
 
     @Override
     public OperationsPage listOperations(int limit, int offset) {
-        throw new UnsupportedOperationException("implemented in Task 4");
+        try {
+            TransgranApiResponse<List<CrossBorderOperation>> response = restClient.get()
+                    .uri(builder -> builder.path("/internal/admin/transgran/operations")
+                            .queryParam("limit", limit).queryParam("offset", offset).build())
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(OPS_TYPE);
+            if (response == null || response.data() == null) {
+                return new OperationsPage(List.of(), 0L);
+            }
+            long total = response.meta() == null || response.meta().total() == null
+                    ? response.data().size()
+                    : response.meta().total();
+            return new OperationsPage(response.data(), total);
+        } catch (RestClientResponseException | ResourceAccessException ex) {
+            throw new UpstreamUnavailableException("transgran-engine operations request failed", ex);
+        }
     }
 
     @Override
     public TransferSettings getSettings() {
-        throw new UnsupportedOperationException("implemented in Task 4");
+        try {
+            TransgranApiResponse<TransferSettings> response = restClient.get()
+                    .uri("/internal/admin/transgran/settings")
+                    .headers(this::addHeaders)
+                    .retrieve()
+                    .body(SETTINGS_TYPE);
+            return response == null ? null : response.data();
+        } catch (RestClientResponseException | ResourceAccessException ex) {
+            throw new UpstreamUnavailableException("transgran-engine settings request failed", ex);
+        }
     }
 
     @Override
     public TransferSettings updateSettings(TransferSettingsUpdate update) {
-        throw new UnsupportedOperationException("implemented in Task 4");
+        try {
+            TransgranApiResponse<TransferSettings> response = restClient.put()
+                    .uri("/internal/admin/transgran/settings")
+                    .headers(this::addHeaders)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(update)
+                    .retrieve()
+                    .body(SETTINGS_TYPE);
+            return response == null ? null : response.data();
+        } catch (RestClientResponseException | ResourceAccessException ex) {
+            throw new UpstreamUnavailableException("transgran-engine settings update failed", ex);
+        }
     }
 
     private SimpleClientHttpRequestFactory requestFactory(TransgranEngineProperties properties) {
