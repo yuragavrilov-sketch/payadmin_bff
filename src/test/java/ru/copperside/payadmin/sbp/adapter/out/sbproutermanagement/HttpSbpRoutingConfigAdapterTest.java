@@ -91,4 +91,26 @@ class HttpSbpRoutingConfigAdapterTest {
                 .satisfies(ex -> assertThat(((UpstreamProblemException) ex).statusCode().value()).isEqualTo(400));
         server.verify();
     }
+
+    @Test
+    void roundTripsAuthPayRoute() {
+        server.expect(requestTo(containsString("/internal/v1/sbp-router-management/routing-config")))
+                .andExpect(method(HttpMethod.PUT))
+                .andExpect(jsonPath("$.authPay.enabled").value(true))
+                .andExpect(jsonPath("$.authPay.backends[0]").value("http://authpay/x"))
+                .andRespond(withSuccess("""
+                        {"data":{"version":5,"activeGroup":"default",
+                          "groups":{"default":{"backends":["http://a/api"]}},
+                          "authPay":{"enabled":true,"backends":["http://authpay/x"],"timeoutMs":1500}},
+                         "meta":{},"error":null,"timestamp":"2026-06-17T10:00:00Z"}""", MediaType.APPLICATION_JSON));
+
+        RoutingConfig saved = adapter.replace(new RoutingConfig(null, "default",
+                Map.of("default", new RoutingConfig.Group(List.of("http://a/api"))),
+                new RoutingConfig.AuthPay(true, List.of("http://authpay/x"), 1500)));
+
+        assertThat(saved.authPay().enabled()).isTrue();
+        assertThat(saved.authPay().backends()).containsExactly("http://authpay/x");
+        assertThat(saved.authPay().timeoutMs()).isEqualTo(1500);
+        server.verify();
+    }
 }
