@@ -9,7 +9,13 @@ public record RoutingConfig(Long version, String activeGroup, Map<String, Group>
     public record Group(List<String> backends) {
     }
 
-    public record AuthPay(boolean enabled, List<String> backends, Integer timeoutMs) {
+    public record AuthPay(boolean enabled, List<String> backends, Integer timeoutMs,
+                         List<String> sbpOperations) {
+
+        /** Backward-compatible constructor for call sites that predate sbpOperations. */
+        public AuthPay(boolean enabled, List<String> backends, Integer timeoutMs) {
+            this(enabled, backends, timeoutMs, null);
+        }
     }
 
     /** Backward-compatible constructor for call sites that predate the authPay route. */

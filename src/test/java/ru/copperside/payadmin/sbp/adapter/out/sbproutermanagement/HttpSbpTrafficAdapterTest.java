@@ -56,7 +56,7 @@ class HttpSbpTrafficAdapterTest {
                         "timestamp":"2026-05-29T09:00:00Z"}""", MediaType.APPLICATION_JSON));
 
         TrafficListResult result = adapter.listTransactions(new TrafficQuery(
-                "ReqAuthPay", null, null, null, null, null, null, null, 0, 50));
+                "ReqAuthPay", null, null, null, null, null, null, null, null, 0, 50));
 
         assertThat(result.total()).isEqualTo(1);
         assertThat(result.items().get(0).correlationId()).isEqualTo("c1");
@@ -77,6 +77,45 @@ class HttpSbpTrafficAdapterTest {
 
         assertThat(stats.total()).isEqualTo(3);
         assertThat(stats.byOutcome()).containsEntry("ok", 2L);
+        server.verify();
+    }
+
+    @Test
+    void listUnwrapsOperationIdAndOperationType() {
+        server.expect(requestTo(containsString("/internal/v1/sbp-router-management/traffic/transactions")))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(queryParam("page", "0"))
+                .andRespond(withSuccess("""
+                        {"data":{"items":[{"correlationId":"c2","txId":"tx2","requestType":"ReqAuthPay",
+                        "terminalOwner":"o","route":"authpay","upstream":"infosrv","outcome":"ok","status":"RESPONDED",
+                        "requestAt":"2026-06-17T10:00:00Z","responseAt":"2026-06-17T10:00:00.050Z","latencyMs":50,
+                        "env":"compose","operationId":"A614711381","operationType":"C2B"}],
+                        "total":1,"page":0,"size":50},"meta":{},"error":null,
+                        "timestamp":"2026-06-17T10:00:00Z"}""", MediaType.APPLICATION_JSON));
+
+        TrafficListResult result = adapter.listTransactions(new TrafficQuery(
+                null, null, null, null, null, null, null, null, null, 0, 50));
+
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.items().get(0).operationId()).isEqualTo("A614711381");
+        assertThat(result.items().get(0).operationType()).isEqualTo("C2B");
+        server.verify();
+    }
+
+    @Test
+    void listSendsOperationIdFilterAsQueryParam() {
+        server.expect(requestTo(containsString("/internal/v1/sbp-router-management/traffic/transactions")))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(queryParam("operationId", "A614711381"))
+                .andExpect(queryParam("page", "0"))
+                .andRespond(withSuccess("""
+                        {"data":{"items":[],"total":0,"page":0,"size":50},
+                        "meta":{},"error":null,"timestamp":"2026-06-17T10:00:00Z"}""", MediaType.APPLICATION_JSON));
+
+        TrafficListResult result = adapter.listTransactions(new TrafficQuery(
+                null, null, null, null, null, null, null, null, "A614711381", 0, 50));
+
+        assertThat(result.total()).isEqualTo(0);
         server.verify();
     }
 

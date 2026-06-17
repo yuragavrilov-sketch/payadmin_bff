@@ -12,7 +12,7 @@ class SbpDomainSerializationTest {
     @Test
     void trafficTransactionSummaryOmitsNullXml() throws Exception {
         TrafficTransaction t = new TrafficTransaction("c1", "tx1", "ReqAuthPay", "owner", "route",
-                "infosrv", "ok", "RESPONDED", null, null, 40L, "compose", null, null);
+                "infosrv", "ok", "RESPONDED", null, null, 40L, "compose", null, null, null, null);
         String json = mapper.writeValueAsString(t);
         assertThat(json).doesNotContain("requestXml").doesNotContain("responseXml");
     }

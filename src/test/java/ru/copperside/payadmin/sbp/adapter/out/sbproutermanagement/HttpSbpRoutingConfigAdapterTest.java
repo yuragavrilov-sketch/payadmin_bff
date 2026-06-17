@@ -106,11 +106,34 @@ class HttpSbpRoutingConfigAdapterTest {
 
         RoutingConfig saved = adapter.replace(new RoutingConfig(null, "default",
                 Map.of("default", new RoutingConfig.Group(List.of("http://a/api"))),
-                new RoutingConfig.AuthPay(true, List.of("http://authpay/x"), 1500)));
+                new RoutingConfig.AuthPay(true, List.of("http://authpay/x"), 1500, null)));
 
         assertThat(saved.authPay().enabled()).isTrue();
         assertThat(saved.authPay().backends()).containsExactly("http://authpay/x");
         assertThat(saved.authPay().timeoutMs()).isEqualTo(1500);
+        server.verify();
+    }
+
+    @Test
+    void roundTripsAuthPaySbpOperations() {
+        server.expect(requestTo(containsString("/internal/v1/sbp-router-management/routing-config")))
+                .andExpect(method(HttpMethod.PUT))
+                .andExpect(jsonPath("$.authPay.enabled").value(true))
+                .andExpect(jsonPath("$.authPay.sbpOperations[0]").value("C2BQRD_Rcv"))
+                .andExpect(jsonPath("$.authPay.sbpOperations[1]").value("C2BQRS_Rcv"))
+                .andRespond(withSuccess("""
+                        {"data":{"version":6,"activeGroup":"default",
+                          "groups":{"default":{"backends":["http://a/api"]}},
+                          "authPay":{"enabled":true,"backends":["http://authpay/x"],"timeoutMs":null,
+                                     "sbpOperations":["C2BQRD_Rcv","C2BQRS_Rcv"]}},
+                         "meta":{},"error":null,"timestamp":"2026-06-17T10:00:00Z"}""", MediaType.APPLICATION_JSON));
+
+        RoutingConfig saved = adapter.replace(new RoutingConfig(null, "default",
+                Map.of("default", new RoutingConfig.Group(List.of("http://a/api"))),
+                new RoutingConfig.AuthPay(true, List.of("http://authpay/x"), null,
+                        List.of("C2BQRD_Rcv", "C2BQRS_Rcv"))));
+
+        assertThat(saved.authPay().sbpOperations()).containsExactly("C2BQRD_Rcv", "C2BQRS_Rcv");
         server.verify();
     }
 }

@@ -98,6 +98,7 @@ public class HttpSbpTrafficAdapter implements SbpTrafficPort {
         addParam(builder, "outcome", q.outcome());
         addParam(builder, "status", q.status());
         addParam(builder, "q", q.q());
+        addParam(builder, "operationId", q.operationId());
         if (q.from() != null) {
             builder.queryParam("from", q.from().toString());
         }

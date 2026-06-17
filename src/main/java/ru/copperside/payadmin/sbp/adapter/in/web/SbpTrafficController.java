@@ -38,9 +38,10 @@ public class SbpTrafficController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
             @RequestParam(required = false) String q,
+            @RequestParam(required = false) String operationId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
-        TrafficQuery query = new TrafficQuery(requestType, terminalOwner, upstream, outcome, status, from, to, q, page, size);
+        TrafficQuery query = new TrafficQuery(requestType, terminalOwner, upstream, outcome, status, from, to, q, operationId, page, size);
         return ApiResponse.success(useCase.listTransactions(query), clock);
     }
 
