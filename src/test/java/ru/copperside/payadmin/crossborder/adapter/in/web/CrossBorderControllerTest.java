@@ -17,7 +17,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
-import ru.copperside.payadmin.crossborder.application.CrossBorderQueries;
+import ru.copperside.payadmin.crossborder.application.port.out.CrossBorderEnginePort;
 import ru.copperside.payadmin.crossborder.domain.CrossBorderOperation;
 import ru.copperside.payadmin.crossborder.domain.OperationsPage;
 import ru.copperside.payadmin.crossborder.domain.PartnerCountry;
@@ -34,6 +34,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -46,8 +47,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @Import(CrossBorderControllerTest.TestSupport.class)
 @TestPropertySource(properties = {
-        "payadmin-bff.security.required-authority=payadmin.read",
-        "spring.main.allow-bean-definition-overriding=true"
+        "payadmin-bff.security.required-authority=payadmin.read"
 })
 class CrossBorderControllerTest {
 
@@ -55,7 +55,7 @@ class CrossBorderControllerTest {
     private WebApplicationContext context;
 
     @Autowired
-    private CrossBorderQueries crossBorderQueries;
+    private CrossBorderEnginePort enginePort;
 
     private MockMvc mockMvc;
 
@@ -64,11 +64,12 @@ class CrossBorderControllerTest {
         mockMvc = MockMvcBuilders.webAppContextSetup(context)
                 .apply(springSecurity())
                 .build();
+        reset(enginePort);
     }
 
     @Test
     void getBanksReturnsNestedDataEnvelope() throws Exception {
-        when(crossBorderQueries.listBanks()).thenReturn(List.of(
+        when(enginePort.listBanks()).thenReturn(List.of(
                 new PartnerCountry("AZ", "Азербайджан", "Azerbaijan", List.of())));
 
         mockMvc.perform(get("/api/v1/crossborder/banks")
@@ -77,12 +78,12 @@ class CrossBorderControllerTest {
                 .andExpect(jsonPath("$.data[0].countryCode").value("AZ"))
                 .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.nullValue()));
 
-        verify(crossBorderQueries).listBanks();
+        verify(enginePort).listBanks();
     }
 
     @Test
     void getOperationsPassesLimitOffsetAndBuildsMeta() throws Exception {
-        when(crossBorderQueries.listOperations(10, 5)).thenReturn(new OperationsPage(List.of(), 7L));
+        when(enginePort.listOperations(10, 5)).thenReturn(new OperationsPage(List.of(), 7L));
 
         mockMvc.perform(get("/api/v1/crossborder/operations?limit=10&offset=5")
                         .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read"))))
@@ -91,12 +92,12 @@ class CrossBorderControllerTest {
                 .andExpect(jsonPath("$.meta.offset").value(5))
                 .andExpect(jsonPath("$.meta.total").value(7));
 
-        verify(crossBorderQueries).listOperations(10, 5);
+        verify(enginePort).listOperations(10, 5);
     }
 
     @Test
     void getSettingsReturnsData() throws Exception {
-        when(crossBorderQueries.getSettings()).thenReturn(new TransferSettings(
+        when(enginePort.getSettings()).thenReturn(new TransferSettings(
                 17L, BigDecimal.ONE, BigDecimal.ONE, new BigDecimal("100"),
                 "RUB", "USD", "card", true, Instant.parse("2026-06-17T20:00:00Z"), "flyway-seed"));
 
@@ -109,7 +110,7 @@ class CrossBorderControllerTest {
     @Test
     void putSettingsMapsRequestToDomainAndReturnsUpdated() throws Exception {
         ArgumentCaptor<TransferSettingsUpdate> captor = ArgumentCaptor.forClass(TransferSettingsUpdate.class);
-        when(crossBorderQueries.updateSettings(any())).thenReturn(new TransferSettings(
+        when(enginePort.updateSettings(any())).thenReturn(new TransferSettings(
                 42L, new BigDecimal("2.5"), BigDecimal.ONE, new BigDecimal("150"),
                 "RUB", "EUR", "card", false, Instant.parse("2026-06-17T21:00:00Z"), "payadmin-bff"));
 
@@ -123,7 +124,7 @@ class CrossBorderControllerTest {
                 .andExpect(jsonPath("$.data.defaultReceiverCurrency").value("EUR"))
                 .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.nullValue()));
 
-        verify(crossBorderQueries).updateSettings(captor.capture());
+        verify(enginePort).updateSettings(captor.capture());
         assertThat(captor.getValue().defaultSenderCurrency()).isEqualTo("RUB");
         assertThat(captor.getValue().defaultReceiverCurrency()).isEqualTo("EUR");
     }
@@ -150,8 +151,8 @@ class CrossBorderControllerTest {
 
         @Bean
         @Primary
-        CrossBorderQueries crossBorderQueries() {
-            return mock(CrossBorderQueries.class);
+        CrossBorderEnginePort crossBorderEnginePort() {
+            return mock(CrossBorderEnginePort.class);
         }
     }
 }
