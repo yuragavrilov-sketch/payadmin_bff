@@ -49,6 +49,12 @@ springdoc:
     path: /swagger-ui.html
 
 payadmin-bff:
+  pay-limit-projection:
+    base-url: ${PAY_LIMIT_PROJECTION_BASE_URL:http://localhost:8088}
+    internal-admin-header-name: ${PAY_LIMIT_PROJECTION_INTERNAL_ADMIN_HEADER_NAME:X-Internal-Admin-Key}
+    internal-admin-api-key: ${sbp-router.admin-key:${PAY_LIMIT_PROJECTION_INTERNAL_ADMIN_API_KEY:}}
+    connect-timeout: ${PAY_LIMIT_PROJECTION_CONNECT_TIMEOUT:2s}
+    read-timeout: ${PAY_LIMIT_PROJECTION_READ_TIMEOUT:5s}
   limit-management:
     base-url: ${PAYADMIN_LIMIT_MANAGEMENT_BASE_URL:http://localhost:8084}
     internal-admin-header-name: ${PAYADMIN_LIMIT_MANAGEMENT_INTERNAL_ADMIN_HEADER_NAME:X-Internal-Admin-Key}
