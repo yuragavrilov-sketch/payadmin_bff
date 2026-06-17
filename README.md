@@ -27,8 +27,9 @@ Implemented browser-facing endpoints:
 | `POST` | `/api/v1/limits/runtime-manifests` | Compile and schedule an engine-facing runtime manifest. |
 | `GET` | `/api/v1/limits/runtime-manifests/active` | Read the active runtime manifest at a UTC instant. |
 | `POST` | `/api/v1/limits/runtime-manifests/{manifestId}/rollback` | Create a scheduled runtime manifest from an older payload. |
-| `DELETE` | `/api/v1/sbp/upstreams/{id}` | Mark an SBP upstream for removal (pass-through to `sbp-router-management`). |
-| `DELETE` | `/api/v1/sbp/extraction-rules/{id}` | Mark an SBP extraction rule for removal (pass-through to `sbp-router-management`). |
+| `GET` | `/api/v1/sbp/routing-config` | Read the managed routing-config (desired state). `404` from management means it is not configured yet. Pass-through to `sbp-router-management`. |
+| `PUT` | `/api/v1/sbp/routing-config` | Replace the managed routing-config; management assigns a new version and publishes it to Kafka (`400` invalid, `503` publish failure). Payload `{ version, activeGroup, groups: { <name>: { backends: [url] } } }`. Pass-through to `sbp-router-management`. |
+| `GET` | `/api/v1/sbp/routers` | Running router fleet (instances with `UP`/`STALE` status, `activeGroup`, groups, backends, metrics, and the applied `routingConfigVersion`). Pass-through to `sbp-router-management`. |
 
 The response uses the shared envelope:
 
