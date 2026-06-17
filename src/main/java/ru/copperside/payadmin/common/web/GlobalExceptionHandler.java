@@ -104,6 +104,11 @@ public class GlobalExceptionHandler {
                 .body(ex.problem());
     }
 
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ProblemEnvelope> handleNotFound(NotFoundException ex) {
+        return problem(HttpStatus.NOT_FOUND, "NOT_FOUND", "not-found", "Not Found", ex.getMessage(), null);
+    }
+
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ProblemEnvelope> handleNoResource(NoResourceFoundException ex) {
         return problem(HttpStatus.NOT_FOUND, "NOT_FOUND", "not-found", "Not Found", "Resource not found: " + ex.getResourcePath(), null);
