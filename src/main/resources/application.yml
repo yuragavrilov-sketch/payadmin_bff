@@ -69,6 +69,12 @@ payadmin-bff:
     internal-admin-api-key: ${sbp-router.admin-key:${SBP_ROUTER_MANAGEMENT_INTERNAL_ADMIN_API_KEY:}}
     connect-timeout: ${SBP_ROUTER_MANAGEMENT_CONNECT_TIMEOUT:2s}
     read-timeout: ${SBP_ROUTER_MANAGEMENT_READ_TIMEOUT:5s}
+  transgran-engine:
+    base-url: ${TRANSGRAN_ENGINE_BASE_URL:http://localhost:8089}
+    internal-admin-header-name: ${TRANSGRAN_ENGINE_INTERNAL_ADMIN_HEADER:X-Internal-Admin-Key}
+    internal-admin-api-key: ${transgran-engine.internal-key:${TRANSGRAN_ENGINE_INTERNAL_ADMIN_API_KEY:}}
+    connect-timeout: ${TRANSGRAN_ENGINE_CONNECT_TIMEOUT:2s}
+    read-timeout: ${TRANSGRAN_ENGINE_READ_TIMEOUT:5s}
   merchants:
     unknown-mcc: ${PAYADMIN_UNKNOWN_MCC:0000}
   security:
