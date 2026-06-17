@@ -91,7 +91,10 @@ public class HttpTransgranEngineAdapter implements CrossBorderEnginePort {
                     .headers(this::addHeaders)
                     .retrieve()
                     .body(SETTINGS_TYPE);
-            return response == null ? null : response.data();
+            if (response == null || response.data() == null) {
+                throw new UpstreamUnavailableException("transgran-engine settings request returned no data", null);
+            }
+            return response.data();
         } catch (RestClientResponseException | ResourceAccessException ex) {
             throw new UpstreamUnavailableException("transgran-engine settings request failed", ex);
         }
@@ -107,7 +110,10 @@ public class HttpTransgranEngineAdapter implements CrossBorderEnginePort {
                     .body(update)
                     .retrieve()
                     .body(SETTINGS_TYPE);
-            return response == null ? null : response.data();
+            if (response == null || response.data() == null) {
+                throw new UpstreamUnavailableException("transgran-engine settings update returned no data", null);
+            }
+            return response.data();
         } catch (RestClientResponseException | ResourceAccessException ex) {
             throw new UpstreamUnavailableException("transgran-engine settings update failed", ex);
         }

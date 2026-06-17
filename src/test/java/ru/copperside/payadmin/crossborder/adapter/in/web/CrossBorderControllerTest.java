@@ -90,7 +90,8 @@ class CrossBorderControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.meta.limit").value(10))
                 .andExpect(jsonPath("$.meta.offset").value(5))
-                .andExpect(jsonPath("$.meta.total").value(7));
+                .andExpect(jsonPath("$.meta.total").value(7))
+                .andExpect(jsonPath("$.meta.count").value(0));
 
         verify(enginePort).listOperations(10, 5);
     }
@@ -127,6 +128,12 @@ class CrossBorderControllerTest {
         verify(enginePort).updateSettings(captor.capture());
         assertThat(captor.getValue().defaultSenderCurrency()).isEqualTo("RUB");
         assertThat(captor.getValue().defaultReceiverCurrency()).isEqualTo("EUR");
+    }
+
+    @Test
+    void banksRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/v1/crossborder/banks"))
+                .andExpect(status().isUnauthorized());
     }
 
     @TestConfiguration(proxyBeanMethods = false)
