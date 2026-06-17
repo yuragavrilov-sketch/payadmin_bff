@@ -30,6 +30,10 @@ Implemented browser-facing endpoints:
 | `GET` | `/api/v1/sbp/routing-config` | Read the managed routing-config (desired state). `404` from management means it is not configured yet. Pass-through to `sbp-router-management`. |
 | `PUT` | `/api/v1/sbp/routing-config` | Replace the managed routing-config; management assigns a new version and publishes it to Kafka (`400` invalid, `503` publish failure). Payload `{ version, activeGroup, groups: { <name>: { backends: [url] } } }`. Pass-through to `sbp-router-management`. |
 | `GET` | `/api/v1/sbp/routers` | Running router fleet (instances with `UP`/`STALE` status, `activeGroup`, groups, backends, metrics, and the applied `routingConfigVersion`). Pass-through to `sbp-router-management`. |
+| `GET` | `/api/v1/crossborder/banks` | Partner country/provider/method catalog. Backed by `transgran-engine`. |
+| `GET` | `/api/v1/crossborder/operations` | Paginated cross-border operation journal. Backed by `transgran-engine`. |
+| `GET` | `/api/v1/crossborder/settings` | Current cross-border transfer settings. Backed by `transgran-engine`. |
+| `PUT` | `/api/v1/crossborder/settings` | Replace cross-border transfer settings. Backed by `transgran-engine`. |
 
 The response uses the shared envelope:
 
@@ -86,7 +90,41 @@ ru.copperside.payadmin
     adapter.in.web
     adapter.out.merchantscore
     config
+  crossborder
+    domain
+    application
+      port.out
+    adapter.in.web
+    adapter.out.transgranengine
+    config
 ```
+
+## crossborder Capability
+
+The `crossborder` capability backs the cross-border transfers section of the
+admin SPA. It calls `transgran-engine` internal admin API under
+`/internal/admin/transgran/**` using `X-Internal-Admin-Key`.
+
+Endpoints:
+
+| BFF endpoint | Upstream call |
+|---|---|
+| `GET /api/v1/crossborder/banks` | `GET /internal/admin/transgran/banks` |
+| `GET /api/v1/crossborder/operations` | `GET /internal/admin/transgran/operations` |
+| `GET /api/v1/crossborder/settings` | `GET /internal/admin/transgran/settings` |
+| `PUT /api/v1/crossborder/settings` | `PUT /internal/admin/transgran/settings` |
+
+The banks response wraps a nested tree:
+`PartnerCountry → PartnerProvider → PartnerMethod → ProviderRequiredField`.
+Operations are paginated (`meta.limit/offset/count/total`). Settings is a single
+object (no pagination, `meta: null`).
+
+When `transgran-engine` is unreachable the capability throws
+`UpstreamUnavailableException`, which `GlobalExceptionHandler` converts to
+`503 UPSTREAM_UNAVAILABLE` (`application/problem+json`).
+
+The full data shapes and example payloads are in
+`../contracts/payadmin-bff/crossborder/README.md`.
 
 ## Mapping
 
@@ -118,7 +156,7 @@ Main environment variables:
 | `CONFIG_SERVER_LABEL` | `${PAY_ENVIRONMENT}` | Config Server git branch/label |
 | `VAULT_ENABLED` | `false` locally, `true` in prod profile | Enables Vault config import |
 | `VAULT_KV_BACKEND` | `pay` | Vault KV mount for shared environments |
-| `VAULT_KV_CONTEXTS` | `${PAY_ENVIRONMENT}/payadmin-bff-merchants-core-internal-admin-key` | Comma-separated exact Vault contexts |
+| `VAULT_KV_CONTEXTS` | `${PAY_ENVIRONMENT}/payadmin-bff-merchants-core-internal-admin-key` | Comma-separated exact Vault contexts. In compose the value includes `payadmin-bff-sbp-router-management-internal-admin-key` and `payadmin-bff-transgran-engine-internal-admin-key`. |
 | `KEYCLOAK_ISSUER_URI` | `http://localhost:8080/realms/payadmin` | Keycloak issuer |
 | `PAYADMIN_REQUIRED_AUTHORITY` | empty | Optional authority required for `/api/**` |
 | `MERCHANTS_CORE_BASE_URL` | `http://localhost:8082` | Upstream base URL |
@@ -127,6 +165,8 @@ Main environment variables:
 | `MERCHANTS_CORE_CONNECT_TIMEOUT` | `2s` | Upstream connect timeout |
 | `MERCHANTS_CORE_READ_TIMEOUT` | `5s` | Upstream read timeout |
 | `PAYADMIN_UNKNOWN_MCC` | `0000` | Fallback MCC |
+| `TRANSGRAN_ENGINE_BASE_URL` | `http://localhost:8089` | `transgran-engine` base URL |
+| `TRANSGRAN_ENGINE_INTERNAL_ADMIN_API_KEY` | empty | `X-Internal-Admin-Key` value sent to `transgran-engine` |
 
 Config Server and Vault imports are optional by default for local development.
 Production and shared test deployments should make imports mandatory with:
@@ -149,6 +189,16 @@ The secret value should use the target property key:
 
 ```yaml
 payadmin-bff.merchants-core.internal-admin-api-key: <secret>
+```
+
+For the `transgran-engine` key:
+
+```text
+pay/prod/payadmin-bff-transgran-engine-internal-admin-key
+```
+
+```yaml
+payadmin-bff.transgran-engine.internal-admin-api-key: <secret>
 ```
 
 ## Local Run
@@ -180,8 +230,10 @@ docker compose up -d --build payadmin-bff
 ```
 
 The container uses `SPRING_PROFILES_ACTIVE=compose`, Config Server label
-`compose`, and Vault secret
-`pay/compose/payadmin-bff-merchants-core-internal-admin-key`.
+`compose`, and Vault secrets
+`pay/compose/payadmin-bff-merchants-core-internal-admin-key`,
+`pay/compose/payadmin-bff-sbp-router-management-internal-admin-key`, and
+`pay/compose/payadmin-bff-transgran-engine-internal-admin-key`.
 
 For browser token compatibility, the compose config keeps the issuer as
 `http://localhost:8080/realms/payadmin` and sets the JWKS URI to
