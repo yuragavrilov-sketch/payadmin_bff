@@ -12,6 +12,7 @@ import ru.copperside.payadmin.sbp.application.traffic.TrafficQuery;
 import ru.copperside.payadmin.sbp.config.SbpRouterManagementProperties;
 import ru.copperside.payadmin.sbp.domain.TrafficListResult;
 import ru.copperside.payadmin.sbp.domain.TrafficStats;
+import ru.copperside.payadmin.sbp.domain.TrafficTransaction;
 
 import java.time.Duration;
 
@@ -116,6 +117,25 @@ class HttpSbpTrafficAdapterTest {
                 null, null, null, null, null, null, null, null, "A614711381", 0, 50));
 
         assertThat(result.total()).isEqualTo(0);
+        server.verify();
+    }
+
+    @Test
+    void detailUnwrapsRespondedWithErrorStatusAndFaultString() {
+        server.expect(requestToUriTemplate("http://sbp-mgmt:8087/internal/v1/sbp-router-management/traffic/transactions/{id}", "corr-fault"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""
+                        {"data":{"correlationId":"corr-fault","txId":"tx-fault","requestType":"ReqAuthPay",
+                        "terminalOwner":"owner","route":"authpay","upstream":"infosrv",
+                        "outcome":"error","status":"RESPONDED_WITH_ERROR",
+                        "requestAt":"2026-06-18T08:00:00Z","responseAt":"2026-06-18T08:00:00.050Z","latencyMs":50,
+                        "env":"compose","faultString":"DBMS error: ORA-1555"},
+                        "meta":{},"error":null,"timestamp":"2026-06-18T08:00:00Z"}""", MediaType.APPLICATION_JSON));
+
+        TrafficTransaction tx = adapter.getTransaction("corr-fault");
+
+        assertThat(tx.status()).isEqualTo("RESPONDED_WITH_ERROR");
+        assertThat(tx.faultString()).isEqualTo("DBMS error: ORA-1555");
         server.verify();
     }
 
