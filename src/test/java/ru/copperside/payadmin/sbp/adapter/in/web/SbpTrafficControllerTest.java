@@ -109,7 +109,7 @@ class SbpTrafficControllerTest {
         public TrafficListResult listTransactions(TrafficQuery query) {
             TrafficTransaction t = new TrafficTransaction(
                     "c1", "tx1", "ReqAuthPay", "owner", "route", "infosrv", "ok",
-                    "RESPONDED", NOW, NOW.plusMillis(40), 40L, "compose", null, null, null, null);
+                    "RESPONDED", NOW, NOW.plusMillis(40), 40L, "compose", null, null, null, null, null);
             return new TrafficListResult(List.of(t), 1, 0, 50);
         }
 
@@ -118,7 +118,7 @@ class SbpTrafficControllerTest {
             return new TrafficTransaction(
                     correlationId, "tx1", "ReqAuthPay", "owner", "route", "infosrv", "ok",
                     "RESPONDED", NOW, NOW.plusMillis(40), 40L, "compose",
-                    "<Req/>", "<Resp/>", null, null);
+                    "<Req/>", "<Resp/>", null, null, null);
         }
 
         @Override
