@@ -161,6 +161,19 @@ class HttpTransgranEngineAdapterTest {
     }
 
     @Test
+    void proxyPayoutSurfacesUpstream5xx_insteadOf503() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(502)
+                .setHeader("Content-Type", "application/json")
+                .setBody("{\"error\":\"gateway\"}"));
+
+        var result = adapter.proxyPayout("create",
+                new tools.jackson.databind.ObjectMapper().createObjectNode());
+
+        assertThat(result.path("status").asInt()).isEqualTo(502);
+        assertThat(result.path("body").path("error").asText()).isEqualTo("gateway");
+    }
+
+    @Test
     void proxyPayoutUnknownOp_throwsIllegalArgument() {
         assertThatThrownBy(() -> adapter.proxyPayout("bogus",
                 new tools.jackson.databind.ObjectMapper().createObjectNode()))

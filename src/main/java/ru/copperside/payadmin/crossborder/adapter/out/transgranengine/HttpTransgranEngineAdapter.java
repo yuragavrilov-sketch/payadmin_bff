@@ -138,15 +138,16 @@ public class HttpTransgranEngineAdapter implements CrossBorderEnginePort {
             throw new IllegalArgumentException("unknown payout op: " + op);
         }
         try {
-            // Тест-страница: пробрасываем фактический статус + тело апстрима (включая 4xx wirebank,
-            // напр. валидацию/токен), а не маскируем под 503. Только 5xx/сеть → UpstreamUnavailable.
+            // Тест-страница: пробрасываем фактический статус + тело апстрима (4xx И 5xx — напр.
+            // валидацию/токен/«Gateway not found»), а не маскируем под 503. Только обрыв связи с engine
+            // (ResourceAccessException) → UpstreamUnavailable.
             ResponseEntity<JsonNode> resp = restClient.post()
                     .uri(path)
                     .headers(this::addHeaders)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body)
                     .retrieve()
-                    .onStatus(HttpStatusCode::is4xxClientError, (req, res) -> { })
+                    .onStatus(HttpStatusCode::isError, (req, res) -> { })
                     .toEntity(JsonNode.class);
             ObjectNode out = JsonNodeFactory.instance.objectNode();
             out.put("status", resp.getStatusCode().value());
