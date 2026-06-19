@@ -33,6 +33,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
@@ -40,6 +41,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -134,6 +136,31 @@ class CrossBorderControllerTest {
     void banksRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/api/v1/crossborder/banks"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void testPayoutProxiesOpAndReturnsRawJson() throws Exception {
+        tools.jackson.databind.JsonNode node =
+                new tools.jackson.databind.ObjectMapper().readTree("{\"request_id\":\"abc\"}");
+        when(enginePort.proxyPayout(eq("convert"), any())).thenReturn(node);
+
+        mockMvc.perform(post("/api/v1/crossborder/test/convert")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sender_amount\":\"100\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.request_id").value("abc"));
+
+        verify(enginePort).proxyPayout(eq("convert"), any());
+    }
+
+    @Test
+    void testPayoutRejectsUnknownOp() throws Exception {
+        mockMvc.perform(post("/api/v1/crossborder/test/bogus")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("payadmin.read")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
     }
 
     @TestConfiguration(proxyBeanMethods = false)

@@ -1,5 +1,6 @@
 package ru.copperside.payadmin.crossborder.application;
 
+import tools.jackson.databind.JsonNode;
 import ru.copperside.payadmin.crossborder.application.port.out.CrossBorderEnginePort;
 import ru.copperside.payadmin.crossborder.domain.OperationsPage;
 import ru.copperside.payadmin.crossborder.domain.PartnerCountry;
@@ -30,5 +31,9 @@ public class CrossBorderQueries {
 
     public TransferSettings updateSettings(TransferSettingsUpdate update) {
         return port.updateSettings(update);
+    }
+
+    public JsonNode proxyPayout(String op, JsonNode body) {
+        return port.proxyPayout(op, body);
     }
 }

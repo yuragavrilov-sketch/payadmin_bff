@@ -1,5 +1,6 @@
 package ru.copperside.payadmin.crossborder.adapter.out.transgranengine;
 
+import tools.jackson.databind.JsonNode;
 import org.slf4j.MDC;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
@@ -20,6 +21,7 @@ import ru.copperside.payadmin.crossborder.domain.TransferSettings;
 import ru.copperside.payadmin.crossborder.domain.TransferSettingsUpdate;
 
 import java.util.List;
+import java.util.Map;
 
 @Component
 public class HttpTransgranEngineAdapter implements CrossBorderEnginePort {
@@ -35,6 +37,12 @@ public class HttpTransgranEngineAdapter implements CrossBorderEnginePort {
     private static final ParameterizedTypeReference<TransgranApiResponse<TransferSettings>> SETTINGS_TYPE =
             new ParameterizedTypeReference<>() {
             };
+
+    /** op → payout-путь engine (тестовый passthrough). */
+    private static final Map<String, String> PAYOUT_PATHS = Map.of(
+            "convert", "/v1/payout/currency/convert",
+            "create", "/v1/payout/create",
+            "get", "/v1/payout/get");
 
     private final TransgranEngineProperties properties;
     private final RestClient restClient;
@@ -116,6 +124,25 @@ public class HttpTransgranEngineAdapter implements CrossBorderEnginePort {
             return response.data();
         } catch (RestClientResponseException | ResourceAccessException ex) {
             throw new UpstreamUnavailableException("transgran-engine settings update failed", ex);
+        }
+    }
+
+    @Override
+    public JsonNode proxyPayout(String op, JsonNode body) {
+        String path = PAYOUT_PATHS.get(op);
+        if (path == null) {
+            throw new IllegalArgumentException("unknown payout op: " + op);
+        }
+        try {
+            return restClient.post()
+                    .uri(path)
+                    .headers(this::addHeaders)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
+        } catch (RestClientResponseException | ResourceAccessException ex) {
+            throw new UpstreamUnavailableException("transgran-engine payout " + op + " failed", ex);
         }
     }
 

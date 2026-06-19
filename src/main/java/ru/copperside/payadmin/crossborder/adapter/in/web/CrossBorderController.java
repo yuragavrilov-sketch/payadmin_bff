@@ -1,10 +1,13 @@
 package ru.copperside.payadmin.crossborder.adapter.in.web;
 
+import tools.jackson.databind.JsonNode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,6 +23,7 @@ import ru.copperside.payadmin.crossborder.domain.TransferSettings;
 
 import java.time.Clock;
 import java.util.List;
+import java.util.Set;
 
 @Validated
 @RestController
@@ -59,5 +63,19 @@ public class CrossBorderController {
     @PutMapping("/settings")
     public ApiResponse<TransferSettings> updateSettings(@Valid @RequestBody UpdateSettingsRequest request) {
         return ApiResponse.success(queries.updateSettings(request.toDomain()), clock);
+    }
+
+    private static final Set<String> PAYOUT_OPS = Set.of("convert", "create", "get");
+
+    /**
+     * Тестовый passthrough в payout-методы engine (только для тест-страницы админ-консоли).
+     * op ∈ convert|create|get; тело и ответ — сырой JSON AsiaPay.
+     */
+    @PostMapping("/test/{op}")
+    public ApiResponse<JsonNode> testPayout(@PathVariable String op, @RequestBody JsonNode body) {
+        if (!PAYOUT_OPS.contains(op)) {
+            throw new IllegalArgumentException("unknown payout op: " + op);
+        }
+        return ApiResponse.success(queries.proxyPayout(op, body), clock);
     }
 }

@@ -129,4 +129,27 @@ class HttpTransgranEngineAdapterTest {
         assertThat(recorded.getPath()).isEqualTo("/internal/admin/transgran/settings");
         assertThat(recorded.getBody().readUtf8()).contains("\"defaultReceiverCurrency\":\"EUR\"");
     }
+
+    @Test
+    void proxyPayoutPostsToEnginePath_passthroughBodyAndResponse() throws Exception {
+        server.enqueue(json("{\"request_id\":\"abc\",\"sender_amount\":733.42}"));
+        var body = new tools.jackson.databind.ObjectMapper()
+                .readTree("{\"wallet_id\":17,\"sender_amount\":\"733.42\"}");
+
+        var result = adapter.proxyPayout("convert", body);
+
+        assertThat(result.path("request_id").asText()).isEqualTo("abc");
+        RecordedRequest recorded = server.takeRequest();
+        assertThat(recorded.getMethod()).isEqualTo("POST");
+        assertThat(recorded.getPath()).isEqualTo("/v1/payout/currency/convert");
+        assertThat(recorded.getHeader("X-Internal-Admin-Key")).isEqualTo("secret");
+        assertThat(recorded.getBody().readUtf8()).contains("\"wallet_id\":17");
+    }
+
+    @Test
+    void proxyPayoutUnknownOp_throwsIllegalArgument() {
+        assertThatThrownBy(() -> adapter.proxyPayout("bogus",
+                new tools.jackson.databind.ObjectMapper().createObjectNode()))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }
