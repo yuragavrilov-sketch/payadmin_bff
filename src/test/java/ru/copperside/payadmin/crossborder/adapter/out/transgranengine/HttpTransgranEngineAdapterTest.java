@@ -138,12 +138,26 @@ class HttpTransgranEngineAdapterTest {
 
         var result = adapter.proxyPayout("convert", body);
 
-        assertThat(result.path("request_id").asText()).isEqualTo("abc");
+        assertThat(result.path("status").asInt()).isEqualTo(200);
+        assertThat(result.path("body").path("request_id").asText()).isEqualTo("abc");
         RecordedRequest recorded = server.takeRequest();
         assertThat(recorded.getMethod()).isEqualTo("POST");
         assertThat(recorded.getPath()).isEqualTo("/v1/payout/currency/convert");
         assertThat(recorded.getHeader("X-Internal-Admin-Key")).isEqualTo("secret");
         assertThat(recorded.getBody().readUtf8()).contains("\"wallet_id\":17");
+    }
+
+    @Test
+    void proxyPayoutSurfacesUpstream4xx_insteadOf503() throws Exception {
+        server.enqueue(new MockResponse().setResponseCode(422)
+                .setHeader("Content-Type", "application/json")
+                .setBody("{\"error\":\"invalid_currency\"}"));
+
+        var result = adapter.proxyPayout("create",
+                new tools.jackson.databind.ObjectMapper().createObjectNode());
+
+        assertThat(result.path("status").asInt()).isEqualTo(422);
+        assertThat(result.path("body").path("error").asText()).isEqualTo("invalid_currency");
     }
 
     @Test

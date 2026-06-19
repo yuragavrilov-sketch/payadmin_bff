@@ -1,10 +1,14 @@
 package ru.copperside.payadmin.crossborder.adapter.out.transgranengine;
 
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.JsonNodeFactory;
+import tools.jackson.databind.node.ObjectNode;
 import org.slf4j.MDC;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
@@ -134,13 +138,20 @@ public class HttpTransgranEngineAdapter implements CrossBorderEnginePort {
             throw new IllegalArgumentException("unknown payout op: " + op);
         }
         try {
-            return restClient.post()
+            // Тест-страница: пробрасываем фактический статус + тело апстрима (включая 4xx wirebank,
+            // напр. валидацию/токен), а не маскируем под 503. Только 5xx/сеть → UpstreamUnavailable.
+            ResponseEntity<JsonNode> resp = restClient.post()
                     .uri(path)
                     .headers(this::addHeaders)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body)
                     .retrieve()
-                    .body(JsonNode.class);
+                    .onStatus(HttpStatusCode::is4xxClientError, (req, res) -> { })
+                    .toEntity(JsonNode.class);
+            ObjectNode out = JsonNodeFactory.instance.objectNode();
+            out.put("status", resp.getStatusCode().value());
+            out.set("body", resp.getBody() != null ? resp.getBody() : JsonNodeFactory.instance.nullNode());
+            return out;
         } catch (RestClientResponseException | ResourceAccessException ex) {
             throw new UpstreamUnavailableException("transgran-engine payout " + op + " failed", ex);
         }
