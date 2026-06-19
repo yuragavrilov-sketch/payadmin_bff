@@ -79,7 +79,7 @@ class HttpTransgranEngineAdapterTest {
     void listOperationsMapsDataAndTotalFromMeta() throws Exception {
         server.enqueue(json("""
             {"data":[{"id":"11111111-1111-1111-1111-111111111111","requestId":"req-1","type":"CURRENCY_CONVERT",
-              "status":"OK","senderCurrency":"RUB","senderAmount":733.42,"receiverCurrency":"USD","receiverAmount":9.9,
+              "status":"OK","stage":"INITIATED","senderCurrency":"RUB","senderAmount":733.42,"receiverCurrency":"USD","receiverAmount":9.9,
               "ratePercent":1,"payoutMethod":"card","payoutType":null,"walletId":17,"isTest":true,
               "expiredDate":"2026-05-14T17:46:21+03:00","createdAt":"2026-06-17T20:00:00Z"}],
              "meta":{"limit":50,"offset":0,"count":1,"total":7},"timestamp":"2026-06-17T20:00:00Z"}"""));
@@ -89,6 +89,7 @@ class HttpTransgranEngineAdapterTest {
         assertThat(page.total()).isEqualTo(7L);
         assertThat(page.data()).hasSize(1);
         assertThat(page.data().get(0).requestId()).isEqualTo("req-1");
+        assertThat(page.data().get(0).stage()).isEqualTo("INITIATED");
         assertThat(page.data().get(0).senderAmount()).isEqualByComparingTo("733.42");
         RecordedRequest recorded = server.takeRequest();
         assertThat(recorded.getPath()).isEqualTo("/internal/admin/transgran/operations?limit=50&offset=0");

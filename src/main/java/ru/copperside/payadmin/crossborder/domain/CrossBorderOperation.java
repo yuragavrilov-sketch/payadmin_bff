@@ -8,6 +8,7 @@ public record CrossBorderOperation(
         String requestId,
         String type,
         String status,
+        String stage,
         String senderCurrency,
         BigDecimal senderAmount,
         String receiverCurrency,
