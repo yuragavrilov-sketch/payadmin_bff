@@ -46,7 +46,8 @@ public class HttpTransgranEngineAdapter implements CrossBorderEnginePort {
     private static final Map<String, String> PAYOUT_PATHS = Map.of(
             "convert", "/v1/payout/currency/convert",
             "create", "/v1/payout/create",
-            "get", "/v1/payout/get");
+            "get", "/v1/payout/get",
+            "confirm", "/v1/payout/confirm");
 
     private final TransgranEngineProperties properties;
     private final RestClient restClient;

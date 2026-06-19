@@ -65,7 +65,7 @@ public class CrossBorderController {
         return ApiResponse.success(queries.updateSettings(request.toDomain()), clock);
     }
 
-    private static final Set<String> PAYOUT_OPS = Set.of("convert", "create", "get");
+    private static final Set<String> PAYOUT_OPS = Set.of("convert", "create", "get", "confirm");
 
     /**
      * Тестовый passthrough в payout-методы engine (только для тест-страницы админ-консоли).
